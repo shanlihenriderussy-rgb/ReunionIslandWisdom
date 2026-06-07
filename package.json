@@ -1,0 +1,22 @@
+{
+  "name": "reunion-island-wisdom",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.12.1",
+  "scripts": {
+    "dev": "corepack pnpm --parallel --filter @riw/game-client --filter @riw/game-server dev",
+    "dev:client": "corepack pnpm --filter @riw/game-client dev",
+    "dev:server": "corepack pnpm --filter @riw/game-server dev",
+    "terrain:dem": "node tools/build-lareunion-dem-terrain.mjs",
+    "terrain:stl": "node tools/build-lareunion-relief-map.mjs",
+    "build": "corepack pnpm -r build",
+    "lint": "corepack pnpm -r lint",
+    "typecheck": "corepack pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.28.0",
+    "eslint": "^9.28.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.33.1"
+  }
+}

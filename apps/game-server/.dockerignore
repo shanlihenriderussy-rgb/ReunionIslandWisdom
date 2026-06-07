@@ -1,0 +1,15 @@
+# Le build Docker part de la racine du monorepo. On exclut tout le superflu
+# pour garder un contexte leger et eviter d'envoyer datasets/dist/docs.
+**/node_modules
+**/dist
+**/.git
+**/.logs
+**/.obsidian
+**/.pnpm-store
+docs
+output
+packages/assets/sources
+apps/game-client/public/assets
+apps/game-client/dist
+*.log
+*.stl

@@ -1,0 +1,48 @@
+name: CI
+
+# Validation sur chaque PR et sur push vers main.
+# Ne deploie RIEN (le deploiement Fly.io / Cloudflare reste manuel, secrets requis).
+# Reproduit la Definition of Done : typecheck + lint + build.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+# Annule les runs obsoletes sur une meme branche/PR.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: typecheck + lint + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Lint
+        run: pnpm -r lint
+
+      - name: Build
+        run: pnpm -r build

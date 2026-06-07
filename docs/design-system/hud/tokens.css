@@ -1,0 +1,287 @@
+/* ============================================================
+   REUNION ISLAND WISDOM — HUD DESIGN TOKENS
+   Direction : platform-adventure tropical cartoon (« Jour Tropical »)
+   Cible : MMORPG 3D web/PWA · HUD DOM par-dessus canvas Three.js
+   Usage : import natif dans le client Vite/TS, ou copie directe.
+   Toutes les valeurs sont des CSS custom properties natives — zéro dépendance.
+   ============================================================ */
+
+:root {
+  /* ----------------------------------------------------------
+     1. COULEURS — RAMPES DE MARQUE
+     Rampes 50→900 dérivées de la palette « Jour Tropical » étendue.
+     ---------------------------------------------------------- */
+
+  /* SOLEIL / CTA — jaune chaud signature (#F4C430) */
+  --sun-50:  #FFF9E6;
+  --sun-100: #FFF0B0;   /* soleil de base */
+  --sun-200: #FFE38A;
+  --sun-300: #FAD45A;
+  --sun-400: #F4C430;   /* accent / CTA */
+  --sun-500: #E9B11C;
+  --sun-600: #C9920F;
+  --sun-700: #9E7108;
+  --sun-800: #6F4F07;
+  --sun-900: #463207;
+
+  /* LAGON — turquoise (#1B8FA8) */
+  --lagoon-50:  #E2F6FA;
+  --lagoon-100: #BBE9F1;
+  --lagoon-200: #7FD3E0;
+  --lagoon-300: #46B6C9;
+  --lagoon-400: #1B8FA8;   /* lagon de base */
+  --lagoon-500: #157C93;
+  --lagoon-600: #126377;
+  --lagoon-700: #0F4C5C;
+  --lagoon-800: #0C3A45;
+  --lagoon-900: #082730;
+
+  /* VEGETATION — vert feuillage (#7DBE5C / #4A7C3F) */
+  --foliage-50:  #EEF7E4;
+  --foliage-100: #D6ECBE;
+  --foliage-200: #B4DD8E;
+  --foliage-300: #7DBE5C;   /* feuillage clair de base */
+  --foliage-400: #5FA341;
+  --foliage-500: #4A7C3F;   /* feuillage profond de base */
+  --foliage-600: #3C6633;
+  --foliage-700: #2F5028;
+  --foliage-800: #233C1E;
+  --foliage-900: #182A15;
+
+  /* CIEL — bleu (#87CEEB) */
+  --sky-50:  #F0FAFE;
+  --sky-100: #D5F0FB;
+  --sky-200: #B0E2F4;
+  --sky-300: #87CEEB;   /* ciel de base */
+  --sky-400: #5BB4DC;
+  --sky-500: #3E92C4;
+  --sky-600: #2F73A3;
+  --sky-700: #245778;
+  --sky-800: #1A3F56;
+  --sky-900: #122A39;
+
+  /* TERRE — terracotta / sol (#C4956A) */
+  --terra-50:  #F8EFE6;
+  --terra-100: #ECD7C0;
+  --terra-200: #DDBA96;
+  --terra-300: #C4956A;   /* sol de base */
+  --terra-400: #AE794B;
+  --terra-500: #94613A;
+  --terra-600: #774C2D;
+  --terra-700: #5A3923;
+  --terra-800: #402919;
+  --terra-900: #2A1B11;
+
+  /* BASALTE — neutres chauds volcaniques (#2A2624) — panneaux HUD */
+  --basalt-50:  #F4F1EC;   /* parchemin clair */
+  --basalt-100: #E4DDD2;
+  --basalt-200: #C3B9AB;
+  --basalt-300: #948B7F;
+  --basalt-400: #635C53;
+  --basalt-500: #413C37;
+  --basalt-600: #322D29;
+  --basalt-700: #2A2624;   /* basalte de base */
+  --basalt-800: #1C1917;
+  --basalt-900: #110F0E;
+
+  /* CORAIL — accent chaud secondaire / danger (#E5645A) */
+  --coral-50:  #FDECEA;
+  --coral-100: #FACCC6;
+  --coral-200: #F5A097;
+  --coral-300: #EF7568;
+  --coral-400: #E5645A;
+  --coral-500: #D2473C;
+  --coral-600: #B0342A;
+  --coral-700: #87271F;
+  --coral-800: #5E1B16;
+  --coral-900: #3C110D;
+
+  /* BOIS — cartouches dialogue / inventaire */
+  --wood-light: #E9C99A;
+  --wood-100:   #D7A56B;
+  --wood-200:   #B97E45;
+  --wood-300:   #8A5A30;
+  --wood-400:   #5E3C20;
+  --wood-edge:  #3E2715;
+
+  /* ----------------------------------------------------------
+     2. ALIAS SÉMANTIQUES
+     ---------------------------------------------------------- */
+
+  /* Action principale (CTA jaune) */
+  --color-cta:        var(--sun-400);
+  --color-cta-hover:  var(--sun-300);
+  --color-cta-active: var(--sun-500);
+  --color-cta-ink:    var(--basalt-900);   /* texte sur jaune — contraste AA */
+  --color-cta-edge:   var(--sun-700);      /* contour/relief bas du bouton */
+
+  /* Action secondaire (lagon) */
+  --color-secondary:        var(--lagoon-400);
+  --color-secondary-hover:  var(--lagoon-300);
+  --color-secondary-active:  var(--lagoon-500);
+  --color-secondary-ink:    #FFFFFF;
+  --color-secondary-edge:   var(--lagoon-700);
+
+  /* États sémantiques */
+  --color-success:    #4FB85E;
+  --color-success-bg: var(--foliage-100);
+  --color-success-edge: var(--foliage-600);
+
+  --color-warn:       var(--sun-400);
+  --color-warn-bg:    var(--sun-50);
+  --color-warn-edge:  var(--sun-700);
+
+  --color-danger:     var(--coral-400);
+  --color-danger-hover: var(--coral-300);
+  --color-danger-active: var(--coral-500);
+  --color-danger-bg:  var(--coral-50);
+  --color-danger-ink: #FFFFFF;
+  --color-danger-edge: var(--coral-700);
+
+  --color-info:       var(--sky-400);
+  --color-info-bg:    var(--sky-50);
+  --color-info-edge:  var(--sky-700);
+
+  /* Jauges */
+  --color-health:     var(--coral-400);
+  --color-health-edge: var(--coral-700);
+  --color-energy:     var(--lagoon-300);
+  --color-energy-edge: var(--lagoon-600);
+  --color-xp:         var(--sun-400);
+  --color-xp-edge:    var(--sun-700);
+
+  /* ----------------------------------------------------------
+     3. SURFACES HUD
+     Panneaux sombres (verre basalte) + cartouches bois.
+     ---------------------------------------------------------- */
+  --hud-panel:        rgb(26 25 23 / 82%);   /* verre basalte */
+  --hud-panel-solid:  #1C1917;
+  --hud-panel-raise:  rgb(50 45 41 / 86%);   /* surface surélevée */
+  --hud-ink:          #F7F3E8;               /* texte clair principal */
+  --hud-ink-soft:     rgb(247 243 232 / 72%);
+  --hud-ink-faint:    rgb(247 243 232 / 45%);
+  --hud-gold-ink:     #FFE3A3;               /* libellés dorés / accents */
+
+  --wood-panel:       var(--wood-light);     /* cartouche bois clair */
+  --wood-panel-2:     var(--wood-100);
+  --wood-ink:         #3E2715;               /* texte sombre sur bois — AA */
+  --wood-ink-soft:    rgb(62 39 21 / 78%);
+
+  /* Contour / liseré HUD (le « marqué » cartoon) */
+  --contour:          #14110F;               /* contour quasi-noir */
+  --contour-soft:     rgb(20 17 15 / 55%);
+  --hud-hairline:     rgb(247 243 232 / 16%);
+
+  /* ----------------------------------------------------------
+     4. TYPOGRAPHIE
+     Display arrondie poster (Paytone One) + corps lisible (Nunito).
+     ---------------------------------------------------------- */
+  --font-display: "Paytone One", system-ui, sans-serif;
+  --font-body:    "Nunito", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:    ui-monospace, "Cascadia Code", "SF Mono", monospace;
+
+  /* Échelle (px) — plancher lisibilité plein soleil 13px */
+  --t-11: 11px;   /* méta / debug */
+  --t-12: 12px;
+  --t-13: 13px;   /* corps mini */
+  --t-14: 14px;
+  --t-15: 15px;   /* corps HUD */
+  --t-16: 16px;
+  --t-18: 18px;
+  --t-21: 21px;
+  --t-26: 26px;   /* titres panneau */
+  --t-32: 32px;
+  --t-42: 42px;   /* gros chiffres / titres écran */
+  --t-56: 56px;
+
+  /* Poids */
+  --w-body: 600;       /* Nunito semibold = lisibilité sur scène chargée */
+  --w-strong: 800;
+  --w-black: 900;
+
+  /* ----------------------------------------------------------
+     5. ESPACEMENT — grille 4pt
+     ---------------------------------------------------------- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-7: 32px;
+  --s-8: 40px;
+  --s-9: 48px;
+  --s-10: 64px;
+
+  /* Marge de sécurité bord d'écran (safe-area + pouce) */
+  --hud-gap:      16px;
+  --hud-gap-sm:   10px;
+  --touch-min:    44px;   /* cible tactile minimale */
+
+  /* ----------------------------------------------------------
+     6. RAYONS — généreux, arrondis
+     ---------------------------------------------------------- */
+  --r-sm:   8px;
+  --r-md:   12px;
+  --r-lg:   18px;
+  --r-xl:   26px;
+  --r-2xl:  34px;
+  --r-pill: 999px;
+  --r-disc: 50%;
+
+  /* ----------------------------------------------------------
+     7. CONTOURS — épaisseur (intensité cartoon ~80%)
+     ---------------------------------------------------------- */
+  --bd-1: 2px;
+  --bd-2: 3px;   /* contour standard panneau */
+  --bd-3: 4px;   /* contour CTA / éléments forts */
+  --bd-4: 5px;
+
+  /* ----------------------------------------------------------
+     8. OMBRES — relief cartoon épais
+     Combo : ombre solide décalée (« lip » de plateforme) + halo ambiant doux.
+     ---------------------------------------------------------- */
+  --sh-pop-sm:
+    0 3px 0 var(--contour),
+    0 6px 12px rgb(0 0 0 / 28%);
+  --sh-pop:
+    0 5px 0 var(--contour),
+    0 12px 24px rgb(0 0 0 / 32%);
+  --sh-pop-lg:
+    0 7px 0 var(--contour),
+    0 18px 38px rgb(0 0 0 / 38%);
+
+  /* Relief bouton CTA : lip jaune foncé + ombre projetée */
+  --sh-cta:
+    0 4px 0 var(--color-cta-edge),
+    0 9px 16px rgb(70 50 7 / 40%);
+  --sh-cta-active:
+    0 1px 0 var(--color-cta-edge),
+    0 3px 7px rgb(70 50 7 / 38%);
+
+  /* Cartouche bois : lip bois foncé */
+  --sh-wood:
+    0 5px 0 var(--wood-edge),
+    0 14px 28px rgb(40 20 8 / 42%);
+
+  /* Halo doux pour panneaux flottants */
+  --sh-float: 0 14px 34px rgb(0 0 0 / 34%);
+
+  /* Lueur d'état (focus / interaction) */
+  --glow-cta:    0 0 0 4px rgb(244 196 48 / 38%);
+  --glow-danger: 0 0 0 4px rgb(229 100 90 / 36%);
+  --glow-focus:  0 0 0 4px rgb(91 180 220 / 45%);
+
+  /* ----------------------------------------------------------
+     9. MOUVEMENT — GPU only (transform/opacity)
+     ---------------------------------------------------------- */
+  --ease-pop:    cubic-bezier(.34, 1.56, .64, 1);   /* rebond cartoon */
+  --ease-out:    cubic-bezier(.22, 1, .36, 1);
+  --dur-press:   90ms;
+  --dur-fast:    160ms;
+  --dur-base:    240ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-press: 0ms; --dur-fast: 0ms; --dur-base: 0ms; }
+}

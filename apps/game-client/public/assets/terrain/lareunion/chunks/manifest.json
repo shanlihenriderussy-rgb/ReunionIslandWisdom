@@ -1,0 +1,314 @@
+{
+  "source": "IGN RGE ALTI D974",
+  "kind": "terrain-stream-manifest",
+  "chunkCountX": 4,
+  "chunkCountZ": 4,
+  "gridX": 640,
+  "gridZ": 576,
+  "chunks": [
+    {
+      "index": 0,
+      "cx": 0,
+      "cz": 0,
+      "bounds": {
+        "minX": -110,
+        "maxX": -55.25821596244131,
+        "minZ": -102.14285714285715,
+        "maxZ": -51.33788819875777
+      },
+      "gridX": 160,
+      "gridZ": 144,
+      "file": "/assets/terrain/lareunion/chunks/lareunion-terrain-0.glb",
+      "heightfield": "/assets/terrain/lareunion/chunks/lareunion-terrain-0.json",
+      "triangles": 0,
+      "runtimeVertices": 23040,
+      "bytes": 830744,
+      "heightfieldBytes": 261587
+    },
+    {
+      "index": 1,
+      "cx": 1,
+      "cz": 0,
+      "bounds": {
+        "minX": -55.25821596244131,
+        "maxX": -0.17214397496087486,
+        "minZ": -102.14285714285715,
+        "maxZ": -51.33788819875777
+      },
+      "gridX": 161,
+      "gridZ": 144,
+      "file": "/assets/terrain/lareunion/chunks/lareunion-terrain-1.glb",
+      "heightfield": "/assets/terrain/lareunion/chunks/lareunion-terrain-1.json",
+      "triangles": 11482,
+      "runtimeVertices": 23184,
+      "bytes": 905012,
+      "heightfieldBytes": 306889
+    },
+    {
+      "index": 2,
+      "cx": 2,
+      "cz": 0,
+      "bounds": {
+        "minX": -0.17214397496087486,
+        "maxX": 54.91392801251956,
+        "minZ": -102.14285714285715,
+        "maxZ": -51.33788819875777
+      },
+      "gridX": 161,
+      "gridZ": 144,
+      "file": "/assets/terrain/lareunion/chunks/lareunion-terrain-2.glb",
+      "heightfield": "/assets/terrain/lareunion/chunks/lareunion-terrain-2.json",
+      "triangles": 29756,
+      "runtimeVertices": 23184,
+      "bytes": 1014616,
+      "heightfieldBytes": 318706
+    },
+    {
+      "index": 3,
+      "cx": 3,
+      "cz": 0,
+      "bounds": {
+        "minX": 54.91392801251956,
+        "maxX": 110,
+        "minZ": -102.14285714285715,
+        "maxZ": -51.33788819875777
+      },
+      "gridX": 161,
+      "gridZ": 144,
+      "file": "/assets/terrain/lareunion/chunks/lareunion-terrain-3.glb",
+      "heightfield": "/assets/terrain/lareunion/chunks/lareunion-terrain-3.json",
+      "triangles": 20962,
+      "runtimeVertices": 23184,
+      "bytes": 961832,
+      "heightfieldBytes": 314669
+    },
+    {
+      "index": 4,
+      "cx": 0,
+      "cz": 1,
+      "bounds": {
+        "minX": -110,
+        "maxX": -55.25821596244131,
+        "minZ": -51.33788819875777,
+        "maxZ": -0.177639751552789
+      },
+      "gridX": 160,
+      "gridZ": 145,
+      "file": "/assets/terrain/lareunion/chunks/lareunion-terrain-4.glb",
+      "heightfield": "/assets/terrain/lareunion/chunks/lareunion-terrain-4.json",
+      "triangles": 11426,
+      "runtimeVertices": 23200,
+      "bytes": 905252,
+      "heightfieldBytes": 295987
+    },
+    {
+      "index": 5,
+      "cx": 1,
+      "cz": 1,
+      "bounds": {
+        "minX": -55.25821596244131,
+        "maxX": -0.17214397496087486,
+        "minZ": -51.33788819875777,
+        "maxZ": -0.177639751552789
+      },
+      "gridX": 161,
+      "gridZ": 145,
+      "file": "/assets/terrain/lareunion/chunks/lareunion-terrain-5.glb",
+      "heightfield": "/assets/terrain/lareunion/chunks/lareunion-terrain-5.json",
+      "triangles": 46080,
+      "runtimeVertices": 23345,
+      "bytes": 1118440,
+      "heightfieldBytes": 330135
+    },
+    {
+      "index": 6,
+      "cx": 2,
+      "cz": 1,
+      "bounds": {
+        "minX": -0.17214397496087486,
+        "maxX": 54.91392801251956,
+        "minZ": -51.33788819875777,
+        "maxZ": -0.177639751552789
+      },
+      "gridX": 161,
+      "gridZ": 145,
+      "file": "/assets/terrain/lareunion/chunks/lareunion-terrain-6.glb",
+      "heightfield": "/assets/terrain/lareunion/chunks/lareunion-terrain-6.json",
+      "triangles": 46080,
+      "runtimeVertices": 23345,
+      "bytes": 1118384,
+      "heightfieldBytes": 341429
+    },
+    {
+      "index": 7,
+      "cx": 3,
+      "cz": 1,
+      "bounds": {
+        "minX": 54.91392801251956,
+        "maxX": 110,
+        "minZ": -51.33788819875777,
+        "maxZ": -0.177639751552789
+      },
+      "gridX": 161,
+      "gridZ": 145,
+      "file": "/assets/terrain/lareunion/chunks/lareunion-terrain-7.glb",
+      "heightfield": "/assets/terrain/lareunion/chunks/lareunion-terrain-7.json",
+      "triangles": 38894,
+      "runtimeVertices": 23345,
+      "bytes": 1075220,
+      "heightfieldBytes": 331463
+    },
+    {
+      "index": 8,
+      "cx": 0,
+      "cz": 2,
+      "bounds": {
+        "minX": -110,
+        "maxX": -55.25821596244131,
+        "minZ": -0.177639751552789,
+        "maxZ": 50.98260869565219
+      },
+      "gridX": 160,
+      "gridZ": 145,
+      "file": "/assets/terrain/lareunion/chunks/lareunion-terrain-8.glb",
+      "heightfield": "/assets/terrain/lareunion/chunks/lareunion-terrain-8.json",
+      "triangles": 26400,
+      "runtimeVertices": 23200,
+      "bytes": 995068,
+      "heightfieldBytes": 316870
+    },
+    {
+      "index": 9,
+      "cx": 1,
+      "cz": 2,
+      "bounds": {
+        "minX": -55.25821596244131,
+        "maxX": -0.17214397496087486,
+        "minZ": -0.177639751552789,
+        "maxZ": 50.98260869565219
+      },
+      "gridX": 161,
+      "gridZ": 145,
+      "file": "/assets/terrain/lareunion/chunks/lareunion-terrain-9.glb",
+      "heightfield": "/assets/terrain/lareunion/chunks/lareunion-terrain-9.json",
+      "triangles": 46080,
+      "runtimeVertices": 23345,
+      "bytes": 1118444,
+      "heightfieldBytes": 340808
+    },
+    {
+      "index": 10,
+      "cx": 2,
+      "cz": 2,
+      "bounds": {
+        "minX": -0.17214397496087486,
+        "maxX": 54.91392801251956,
+        "minZ": -0.177639751552789,
+        "maxZ": 50.98260869565219
+      },
+      "gridX": 161,
+      "gridZ": 145,
+      "file": "/assets/terrain/lareunion/chunks/lareunion-terrain-10.glb",
+      "heightfield": "/assets/terrain/lareunion/chunks/lareunion-terrain-10.json",
+      "triangles": 46080,
+      "runtimeVertices": 23345,
+      "bytes": 1118440,
+      "heightfieldBytes": 331475
+    },
+    {
+      "index": 11,
+      "cx": 3,
+      "cz": 2,
+      "bounds": {
+        "minX": 54.91392801251956,
+        "maxX": 110,
+        "minZ": -0.177639751552789,
+        "maxZ": 50.98260869565219
+      },
+      "gridX": 161,
+      "gridZ": 145,
+      "file": "/assets/terrain/lareunion/chunks/lareunion-terrain-11.glb",
+      "heightfield": "/assets/terrain/lareunion/chunks/lareunion-terrain-11.json",
+      "triangles": 16964,
+      "runtimeVertices": 23345,
+      "bytes": 943696,
+      "heightfieldBytes": 303069
+    },
+    {
+      "index": 12,
+      "cx": 0,
+      "cz": 3,
+      "bounds": {
+        "minX": -110,
+        "maxX": -55.25821596244131,
+        "minZ": 50.98260869565219,
+        "maxZ": 102.14285714285715
+      },
+      "gridX": 160,
+      "gridZ": 145,
+      "file": "/assets/terrain/lareunion/chunks/lareunion-terrain-12.glb",
+      "heightfield": "/assets/terrain/lareunion/chunks/lareunion-terrain-12.json",
+      "triangles": 6080,
+      "runtimeVertices": 23200,
+      "bytes": 873172,
+      "heightfieldBytes": 290402
+    },
+    {
+      "index": 13,
+      "cx": 1,
+      "cz": 3,
+      "bounds": {
+        "minX": -55.25821596244131,
+        "maxX": -0.17214397496087486,
+        "minZ": 50.98260869565219,
+        "maxZ": 102.14285714285715
+      },
+      "gridX": 161,
+      "gridZ": 145,
+      "file": "/assets/terrain/lareunion/chunks/lareunion-terrain-13.glb",
+      "heightfield": "/assets/terrain/lareunion/chunks/lareunion-terrain-13.json",
+      "triangles": 30762,
+      "runtimeVertices": 23345,
+      "bytes": 1026504,
+      "heightfieldBytes": 324456
+    },
+    {
+      "index": 14,
+      "cx": 2,
+      "cz": 3,
+      "bounds": {
+        "minX": -0.17214397496087486,
+        "maxX": 54.91392801251956,
+        "minZ": 50.98260869565219,
+        "maxZ": 102.14285714285715
+      },
+      "gridX": 161,
+      "gridZ": 145,
+      "file": "/assets/terrain/lareunion/chunks/lareunion-terrain-14.glb",
+      "heightfield": "/assets/terrain/lareunion/chunks/lareunion-terrain-14.json",
+      "triangles": 26006,
+      "runtimeVertices": 23345,
+      "bytes": 997960,
+      "heightfieldBytes": 313186
+    },
+    {
+      "index": 15,
+      "cx": 3,
+      "cz": 3,
+      "bounds": {
+        "minX": 54.91392801251956,
+        "maxX": 110,
+        "minZ": 50.98260869565219,
+        "maxZ": 102.14285714285715
+      },
+      "gridX": 161,
+      "gridZ": 145,
+      "file": "/assets/terrain/lareunion/chunks/lareunion-terrain-15.glb",
+      "heightfield": "/assets/terrain/lareunion/chunks/lareunion-terrain-15.json",
+      "triangles": 1428,
+      "runtimeVertices": 23345,
+      "bytes": 850476,
+      "heightfieldBytes": 272254
+    }
+  ]
+}

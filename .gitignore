@@ -1,0 +1,27 @@
+node_modules/
+dist/
+.env
+.env.local
+.DS_Store
+*.log
+.logs/
+.obsidian/
+docs/obsidian/.obsidian/workspace*.json
+
+# Datasets sources lourds — non versionnes (regeneres via tools/).
+# RGE ALTI D974 ~940 Mo : garder en local, ne committer que les sorties terrain.
+packages/assets/sources/lareunion/rgealti/
+
+# Scratch Obsidian / fichiers temporaires racine — ne pas versionner.
+_tmp_*
+_wtest.txt
+/output/
+Sans titre.*
+/2026-*.md
+
+# Scratch Obsidian / fichiers temporaires racine — ne pas versionner.
+_tmp_*
+_wtest.txt
+/output/
+Sans titre.*
+/2026-*.md

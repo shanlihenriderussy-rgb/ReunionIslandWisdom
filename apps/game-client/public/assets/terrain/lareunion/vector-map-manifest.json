@@ -1,0 +1,11 @@
+{
+  "source": "packages/assets/sources/lareunion/lareunion-osm-outline.geojson",
+  "license": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+  "osmId": 8064033,
+  "targetLongestSide": 155,
+  "simplifyTolerance": 0.12,
+  "sourcePoints": 11427,
+  "runtimePoints": 584,
+  "bytes": 31136,
+  "file": "/assets/terrain/lareunion/lareunion-vector-map.glb"
+}

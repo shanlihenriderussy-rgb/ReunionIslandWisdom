@@ -1,0 +1,23 @@
+{
+  "extends": "./apps/game-client/tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "files": [
+    "apps/game-client/src/game/GameApp.ts",
+    "apps/game-client/src/game/InputController.ts",
+    "apps/game-client/src/game/camera.ts",
+    "apps/game-client/src/game/collision.ts",
+    "apps/game-client/src/main.ts",
+    "apps/game-client/src/network/NetworkClient.ts",
+    "apps/game-client/src/render/gltf.ts",
+    "apps/game-client/src/render/localPlayer.ts",
+    "apps/game-client/src/render/npcs.ts",
+    "apps/game-client/src/render/players.ts",
+    "apps/game-client/src/render/world.ts",
+    "apps/game-client/src/ui/hud.ts",
+    "apps/game-client/src/world/westVegetation.ts",
+    "apps/game-client/src/render/westVegetation.ts",
+    "apps/game-client/src/render/westScenic.ts"
+  ]
+}

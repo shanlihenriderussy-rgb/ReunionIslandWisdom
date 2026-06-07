@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: #111;
+        overflow: hidden;
+      }
+
+      video {
+        width: 100vw;
+        height: 100vh;
+        object-fit: contain;
+        background: #111;
+      }
+    </style>
+  </head>
+  <body>
+    <video id="video" muted preload="auto"></video>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const video = document.querySelector("#video");
+      video.src =
+        "file:///C:/Users/Shan%20li/AppData/Local/Packages/Microsoft.ScreenSketch_8wekyb3d8bbwe/TempState/Recordings/20260530-0542-05.6418323.mp4";
+      video.addEventListener("loadedmetadata", () => {
+        video.currentTime = Number(params.get("t") ?? "0");
+      });
+      video.addEventListener("seeked", () => {
+        video.pause();
+        document.body.dataset.ready = "true";
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,76 @@
+name: Deploy
+
+# Deploiement automatique APRES un CI vert sur main/master.
+# Gate de securite : ne s'execute QUE si la variable de repo DEPLOY_ENABLED = "true"
+# (Settings > Secrets and variables > Actions > Variables). Tant qu'elle n'est pas
+# posee, les jobs sont skippes -> pas de build rouge avant configuration.
+#
+# Secrets requis (Settings > Secrets and variables > Actions > Secrets) :
+#   FLY_API_TOKEN            -> `fly tokens create deploy`
+#   CLOUDFLARE_API_TOKEN     -> token Cloudflare (permission Pages: Edit)
+#   CLOUDFLARE_ACCOUNT_ID    -> ID du compte Cloudflare
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main, master]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-server:
+    name: Fly.io (serveur Colyseus)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      vars.DEPLOY_ENABLED == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy (build remote-only sur les builders Fly)
+        run: flyctl deploy --config apps/game-server/fly.toml --dockerfile apps/game-server/Dockerfile --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  deploy-client:
+    name: Cloudflare Pages (client)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      vars.DEPLOY_ENABLED == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build client (lit .env.production)
+        run: pnpm --filter @riw/game-client build
+
+      - name: Deploy sur Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy apps/game-client/dist --project-name=riw-game-client --branch=main
