@@ -1,3 +1,21 @@
+
+## 2026-06-25 00:00 - Le jeu devient distribuable
+
+Resume public :
+
+- Le projet passe d'une version seulement lancee en developpement a une base de programme installable.
+- Le jeu peut maintenant etre prepare comme une PWA : une application web installable via navigateur.
+- Un script prepare aussi un zip de distribution pour transmettre/tester le client.
+
+Impact pour le projet :
+
+- On se rapproche d'un vrai cycle de production : construire, preparer, empaqueter.
+- Les agents Claude/Codex ont maintenant un contrat local pour suivre ce pipeline sans improviser.
+- Le moteur du jeu ne change pas : on garde Vite, Three.js et Colyseus.
+
+Statut :
+
+- Base technique posee. Zip de distribution genere avec succes le 2026-06-25. Reste a tester l'installation PWA dans Chrome/Edge.
 # 22 - Synthese publique neophyte
 
 ## Role du fichier
@@ -32,6 +50,21 @@ Impact pour le projet :
 Statut :
 - ...
 ```
+
+## 2026-06-24 17:29 - Fumee sur le volcan de depart
+
+Resume public :
+- Le joueur commence son aventure sur le Piton de la Fournaise, le volcan actif de l'ile.
+- On a ajoute de petites fumerolles : des panaches de vapeur qui sortent du sol autour du cratere.
+- Tout est dessine par le code (pas d'image telechargee), dans le style low-poly du jeu.
+
+Impact pour le projet :
+- La zone de depart respire le volcan vivant des le premier regard.
+- Ces fumees aident a comprendre ou on se trouve, sans texte.
+- Aucun ralentissement notable : ce sont de tres petites formes.
+
+Statut :
+- Livre cote code. Reste a verifier en images dans le jeu (etape suivante du cycle).
 
 ## 2026-05-31 17:20 - Mise en place du journal public
 
@@ -582,3 +615,25 @@ Statut :
 
 - Decors poses, ancres au sol du terrain. A regarder en jeu (rendu, position au sol).
 - Detail technique : [[iterations/2026-06-07-fournaise-props]].
+
+## 2026-06-15 18:53 — Le jeu sait quand tu es "sur le sentier" (cote ouest)
+
+En clair :
+
+- Le jeu suit deja ta progression le long du sentier ouest (de la plage de
+  Saint-Paul jusqu'au point de vue du Maido).
+- Probleme : meme si tu t'eloignais du chemin, le jeu continuait a dire ou tu en
+  etais sur le parcours, comme si tu marchais toujours dessus.
+- Correction du jour : le jeu mesure maintenant ta distance au chemin. Si tu es
+  trop loin (au-dela d'environ 3,5 metres de jeu de part et d'autre), il considere
+  que tu n'es plus "sur le sentier".
+
+Impact pour le projet :
+
+- Base propre pour, plus tard, afficher "lieu actuel" seulement quand c'est utile.
+- Aucun objet ajoute, aucun changement visuel : juste une regle de calcul fiable.
+
+Statut :
+
+- Logique testee (6 cas sur 6 corrects). A revalider sous Windows.
+- Detail technique : [[iterations/2026-06-15-west-path-onpath-threshold]].

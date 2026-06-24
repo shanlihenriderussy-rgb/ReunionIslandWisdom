@@ -28,7 +28,8 @@ Grille et process : voir [[03-playtests]]. Detail par bug : [[_templates/bug]].
 - [x] Materialiser les marqueurs de zone : props procéduraux basalte/scories + 3 repères objectif (`render/fournaise.ts`).
 - [ ] Verifier praticabilite des pentes du cone en `?mapDebug` + au spawn.
 - [ ] Instancing rochers Fournaise si besoin perf mobile.
-- [ ] Signal fumerolle (particules) — décision DA avant ([[09-direction-artistique]]).
+- [x] Fumerolles low-poly statiques (`makeFumarole`, 5 seedees, vapeur translucide) — livre 2026-06-24, cf. iterations/2026-06-24-fournaise-fumerolles. Version particules animees reste optionnelle (decision DA avant).
+- [ ] TEST : verifier fumerolles en `?mapDebug` (ancrage sol, opacite, pas de chevauchement marqueurs).
 
 ## Gameplay
 
@@ -84,3 +85,13 @@ Detail complet : [[24-hebergement-production]]. Decision : [[04-decisions]] ADR-
 - [ ] Creer avatar capsule V1.
 - [ ] Creer 5 props Reunion.
 - [ ] Definir budgets GLB.
+
+## Programme installable
+
+- [x] Brancher manifest PWA + icones dans `index.html`.
+- [x] Ajouter service worker client statique.
+- [x] Ajouter script zip `tools/package-web-release.ps1`.
+- [x] Ajouter contrat MCP local `mcp/riw-build-cook.mcp.json`.
+- [x] Valider `corepack pnpm release:web` hors sandbox : zip OK `output/reunion-island-wisdom-web-0.1.0-20260625-031928.zip`.
+- [ ] Tester installation Chrome/Edge depuis le zip servi localement.
+- [ ] Decider si prochaine etape = zip serveur separe ou Tauri 2 Windows.

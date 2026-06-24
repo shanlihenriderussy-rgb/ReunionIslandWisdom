@@ -11,7 +11,10 @@
     "terrain:stl": "node tools/build-lareunion-relief-map.mjs",
     "build": "corepack pnpm -r build",
     "lint": "corepack pnpm -r lint",
-    "typecheck": "corepack pnpm -r typecheck"
+    "typecheck": "corepack pnpm -r typecheck",
+    "cook:web": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-web-release.ps1",
+    "package:web": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-web-release.ps1 -SkipBuild",
+    "release:web": "corepack pnpm --filter @riw/game-client typecheck && corepack pnpm --filter @riw/game-client lint && powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-web-release.ps1"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",

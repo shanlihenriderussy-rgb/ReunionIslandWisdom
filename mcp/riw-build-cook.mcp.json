@@ -1,0 +1,43 @@
+{
+  "name": "riw-build-cook",
+  "version": "0.1.0",
+  "purpose": "Contrat MCP local pour piloter Reunion Island Wisdom comme un programme cook/build/package, style Unreal Engine.",
+  "runtime": "local-first",
+  "agents": [
+    {
+      "id": "codex-build-engineer",
+      "role": "Patch code, scripts, validations locales, packaging zip.",
+      "allowedCommands": [
+        "corepack pnpm --filter @riw/game-client typecheck",
+        "corepack pnpm --filter @riw/game-client lint",
+        "corepack pnpm --filter @riw/game-client build",
+        "corepack pnpm cook:web",
+        "corepack pnpm package:web"
+      ]
+    },
+    {
+      "id": "claude-design-producer",
+      "role": "Structurer docs, direction produit, backlog, decisions et syntheses publiques.",
+      "allowedWriteScopes": [
+        "docs/obsidian",
+        "docs/world"
+      ]
+    }
+  ],
+  "phases": [
+    { "id": "validate", "command": "corepack pnpm --filter @riw/game-client typecheck && corepack pnpm --filter @riw/game-client lint" },
+    { "id": "cook-web", "command": "corepack pnpm cook:web" },
+    { "id": "package-web", "command": "corepack pnpm package:web" }
+  ],
+  "securityRules": [
+    "Pas de secret cote client.",
+    "Pas de dataset brut lourd dans le zip.",
+    "Pas de logique serveur autoritative dans le client.",
+    "Notes Obsidian obligatoires pour decision, pipeline et release."
+  ],
+  "artifacts": {
+    "webZip": "output/reunion-island-wisdom-web-<version>-<timestamp>.zip",
+    "clientDist": "apps/game-client/dist",
+    "publicManifest": "apps/game-client/public/manifest.webmanifest"
+  }
+}

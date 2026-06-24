@@ -146,3 +146,22 @@ export function getNearestPathProgress(x: number, z: number): PathProgress {
 
   return best;
 }
+
+/**
+ * Largeur consideree comme "sur le sentier", en unites monde (de part et d'autre).
+ * Au-dela, la progression `normalized` reste calculee mais n'est plus significative.
+ */
+export const WEST_BLOCKOUT_PATH_HALF_WIDTH = 3.5;
+
+/**
+ * Indique si une position (x, z) est assez proche du sentier pour que la
+ * progression soit fiable. Evite d'afficher un "lieu actuel" quand le joueur
+ * s'eloigne du trace. Pur, sans rendu ni DOM.
+ */
+export function isOnWestPath(
+  x: number,
+  z: number,
+  halfWidth: number = WEST_BLOCKOUT_PATH_HALF_WIDTH
+): boolean {
+  return getNearestPathProgress(x, z).lateral <= halfWidth;
+}

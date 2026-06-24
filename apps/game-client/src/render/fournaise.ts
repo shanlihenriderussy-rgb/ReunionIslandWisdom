@@ -25,9 +25,15 @@ const SCATTER_COUNT = 26;
 const RIM_ROCK_COUNT = 18;
 const SCATTER_SEED = 0xf0c12a;
 
+// Fumerolles : vapeur du volcan actif. Lisibilite zone volcanique + ambiance.
+const FUMAROLE_COUNT = 5;
+const FUMAROLE_RING = RIM_RADIUS * 0.72;
+const FUMAROLE_SEED = 0x3b9a17;
+
 const basaltDark = 0x2c2826;
 const basaltMid = 0x403a36;
 const scoriaRed = 0x6e3b2f;
+const steamPale = 0xcfc9c4;
 const markerInk = 0xd8c8b0;
 
 export function addFournaiseBlockout(scene: THREE.Scene): void {
@@ -67,7 +73,17 @@ export function addFournaiseBlockout(scene: THREE.Scene): void {
         group.add(makeRock(x, z, terrain, scale, color, i + 100));
       }
 
-      // 3) Reperes d'objectif (volumes lisibles, lies au HUD).
+      // 3) Fumerolles (vapeur volcan actif), anneau interieur seede, centre evite.
+      const frng = mulberry32(FUMAROLE_SEED);
+      for (let i = 0; i < FUMAROLE_COUNT; i += 1) {
+        const a = frng() * Math.PI * 2;
+        const r = FUMAROLE_RING * (0.85 + frng() * 0.3);
+        const x = CRATER_CENTER.x + Math.cos(a) * r;
+        const z = CRATER_CENTER.y + Math.sin(a) * r;
+        group.add(makeFumarole(x, z, terrain, 0.7 + frng() * 0.6, i + 200));
+      }
+
+      // 4) Reperes d'objectif (volumes lisibles, lies au HUD).
       // Obj 1 : rebord Dolomieu (= spawn).
       group.add(makeCairn(65.9, -35, terrain, "Rebord Dolomieu"));
       // Obj 2 : cone central (sommet).
@@ -94,7 +110,7 @@ function makeRock(
 ): THREE.Mesh {
   const geometry = new THREE.IcosahedronGeometry(scale, 0);
   // Deforme legerement les sommets pour casser la regularite (look scorie).
-  const pos = geometry.attributes.position;
+  const pos = geometry.getAttribute("position");
   for (let i = 0; i < pos.count; i += 1) {
     const d = 0.78 + hash01(seed * 3.1 + i) * 0.44;
     pos.setXYZ(i, pos.getX(i) * d, pos.getY(i) * d * 0.85, pos.getZ(i) * d);
@@ -179,6 +195,41 @@ function makeSightMarker(
   arrow.rotation.z = -Math.atan2(d.y, d.x) - Math.PI / 2;
   arrow.rotation.y = Math.atan2(d.x, d.y);
   g.add(arrow);
+  g.position.set(x, sampleHeight(terrain, x, z), z);
+  return g;
+}
+
+// Fumerolle : petit event basalte + bouffees de vapeur empilees (low-poly, statique).
+function makeFumarole(
+  x: number,
+  z: number,
+  terrain: TerrainCollisionData,
+  scale: number,
+  seed: number
+): THREE.Group {
+  const g = new THREE.Group();
+  g.name = "FournaiseFumarole";
+
+  // Event basalte a la base.
+  const vent = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.22 * scale, 0.34 * scale, 0.3 * scale, 6),
+    new THREE.MeshStandardMaterial({ color: basaltDark, roughness: 0.98, flatShading: true })
+  );
+  vent.position.y = 0.15 * scale;
+  vent.castShadow = true;
+  g.add(vent);
+
+  // 3 bouffees de vapeur : montent, grossissent puis se dissipent.
+  let puffY = 0.4 * scale;
+  for (let i = 0; i < 3; i += 1) {
+    const s = (0.32 + i * 0.16) * scale;
+    const puffMat = new THREE.MeshStandardMaterial({ color: steamPale, roughness: 1, flatShading: true, transparent: true, opacity: 0.5 - i * 0.12 });
+    const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), puffMat);
+    puff.position.set((hash01(seed + i) - 0.5) * 0.3 * scale, puffY, (hash01(seed + i + 5) - 0.5) * 0.3 * scale);
+    g.add(puff);
+    puffY += s * 1.1;
+  }
+
   g.position.set(x, sampleHeight(terrain, x, z), z);
   return g;
 }

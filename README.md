@@ -19,3 +19,21 @@ pnpm dev
 
 Client : http://localhost:5173  
 Serveur : ws://localhost:2567
+
+## Programme installable / zip
+
+PWA web installable : manifest + service worker dans `apps/game-client/public/`.
+
+```powershell
+corepack pnpm release:web
+```
+
+Sortie : `output/reunion-island-wisdom-web-<version>-<timestamp>.zip`
+
+Sans rebuild, depuis un `dist` existant :
+
+```powershell
+corepack pnpm package:web
+```
+
+Contrat MCP local : `mcp/riw-build-cook.mcp.json`.

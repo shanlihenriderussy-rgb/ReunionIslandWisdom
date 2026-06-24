@@ -33,6 +33,7 @@
 - [[22-synthese-publique-neophyte]] — journal public non technique
 - [[23-design-system-hud]] — tokens et composants HUD
 - [[24-hebergement-production]] — infra prod (Cloudflare Pages + Fly.io)
+- [[25-programme-installable-mcp]] — PWA, zip, build/cook MCP
 
 ## Boucle hebdo
 

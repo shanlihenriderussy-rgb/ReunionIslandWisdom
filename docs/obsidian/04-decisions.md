@@ -222,3 +222,34 @@ Consequence :
 - aucun nouvel asset 3D (respect pipeline terrain -> level design -> assets par quete) ;
 - l'auto-progression de l'objectif reste inerte (liee au dialogue PNJ, non spawnes) : a brancher sur la position joueur ;
 - detail level design : voir [[12-phase-1-level-design]].
+
+## ADR-009 - Distribution programme installable : PWA + zip + MCP build/cook
+
+Date : 2026-06-25
+Statut : accepte, V1 posee
+
+Decision :
+
+- Ajouter une couche distribution sans changer de moteur.
+- Cible V1 : PWA web installable + zip statique reproductible.
+- Ajouter un contrat MCP local `mcp/riw-build-cook.mcp.json` pour cadrer Claude/Codex en pipeline build/cook/package.
+- Reporter le vrai `.exe` Windows/Tauri a une decision dediee.
+
+Pourquoi :
+
+- Shan veut un tournant programme installable/zippable, style production engine.
+- Le projet doit produire un artefact testable, pas seulement tourner en dev.
+- PWA + zip respecte la stack actuelle et evite d'ajouter Rust/Tauri trop tot.
+
+Consequence :
+
+- `apps/game-client/index.html` reference manifest/icones.
+- `sw.js` active une base offline/cache pour le client statique.
+- `tools/package-web-release.ps1` cree `output/reunion-island-wisdom-web-*.zip`.
+- `package.json` expose `cook:web`, `package:web`, `release:web`.
+- Serveur Colyseus reste separe et authoritative.
+
+Risques :
+
+- Cache service worker a surveiller avec les gros GLB.
+- Build Vite peut encore etre bloque par sandbox Windows (`spawn EPERM`) ; validation hors sandbox necessaire si present.
