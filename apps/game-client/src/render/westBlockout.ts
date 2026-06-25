@@ -40,7 +40,7 @@ const boundaryMaterial = new THREE.MeshStandardMaterial({
 });
 
 const trailSampleSpacing = 1.15;
-const trailHeightOffset = 0.14;
+const trailHeightOffset = 0.045;
 const trailWidth = 2.55;
 const mafateLookTarget = new THREE.Vector2(-31.2, 22.7);
 
@@ -76,15 +76,18 @@ function createTrailRibbon(
   const vertices: number[] = [];
   const colors: number[] = [];
   const indices: number[] = [];
-  const outer = new THREE.Color(0x5c371d);
-  const shoulder = new THREE.Color(0x8a562c);
-  const center = new THREE.Color(0xc68442);
+  const feather = new THREE.Color(0x8fba63);
+  const outer = new THREE.Color(0x8a6c40);
+  const shoulder = new THREE.Color(0xd0a15e);
+  const center = new THREE.Color(0xe1c17f);
   const crossSection = [
-    { offset: -0.5, lift: 0.002, color: outer },
-    { offset: -0.28, lift: 0.014, color: shoulder },
-    { offset: 0, lift: 0.03, color: center },
-    { offset: 0.28, lift: 0.014, color: shoulder },
-    { offset: 0.5, lift: 0.002, color: outer }
+    { offset: -0.68, lift: 0.012, color: feather },
+    { offset: -0.5, lift: 0.018, color: outer },
+    { offset: -0.28, lift: 0.04, color: shoulder },
+    { offset: 0, lift: 0.075, color: center },
+    { offset: 0.28, lift: 0.04, color: shoulder },
+    { offset: 0.5, lift: 0.018, color: outer },
+    { offset: 0.68, lift: 0.012, color: feather }
   ] as const;
 
   for (let index = 0; index < centers.length; index += 1) {
@@ -96,11 +99,11 @@ function createTrailRibbon(
     const next = centers[Math.min(centers.length - 1, index + 1)] ?? point;
     const tangent = new THREE.Vector2(next.x - previous.x, next.z - previous.z).normalize();
     const side = new THREE.Vector2(-tangent.y, tangent.x);
-    const baseY = sampleHeight(terrain, point.x, point.z) + trailHeightOffset;
-
     for (const section of crossSection) {
       const offset = section.offset * width;
-      vertices.push(point.x + side.x * offset, baseY + section.lift, point.z + side.y * offset);
+      const vx = point.x + side.x * offset;
+      const vz = point.z + side.y * offset;
+      vertices.push(vx, sampleHeight(terrain, vx, vz) + trailHeightOffset + section.lift, vz);
       colors.push(section.color.r, section.color.g, section.color.b);
     }
   }
@@ -236,6 +239,7 @@ function createQuestMarker(marker: BlockoutMarker, terrain: TerrainCollisionData
   const group = new THREE.Group();
   group.name = `BlockoutQuest_${marker.id}`;
   group.position.set(marker.x, sampleHeight(terrain, marker.x, marker.z) + 0.16, marker.z);
+  group.quaternion.copy(terrainTiltQuaternion(terrain, marker.x, marker.z, 0.38));
 
   const material = new THREE.MeshStandardMaterial({
     color: marker.color,
@@ -306,6 +310,7 @@ function createBoundaryMarker(marker: BlockoutMarker, terrain: TerrainCollisionD
   const group = new THREE.Group();
   group.name = `BlockoutBoundary_${marker.id}`;
   group.position.set(marker.x, sampleHeight(terrain, marker.x, marker.z) + 0.05, marker.z);
+  group.quaternion.copy(terrainTiltQuaternion(terrain, marker.x, marker.z, 0.42));
 
   const material = boundaryMaterial.clone();
   material.color.setHex(marker.color);
@@ -316,6 +321,34 @@ function createBoundaryMarker(marker: BlockoutMarker, terrain: TerrainCollisionD
   rock.receiveShadow = true;
   group.add(rock);
   return group;
+}
+
+
+const terrainUp = new THREE.Vector3(0, 1, 0);
+
+function terrainTiltQuaternion(
+  terrain: TerrainCollisionData,
+  x: number,
+  z: number,
+  maxTiltRadians: number
+): THREE.Quaternion {
+  const normal = sampleNormal(terrain, x, z, 0.9);
+  const angle = terrainUp.angleTo(normal);
+  if (angle <= 0.0001) {
+    return new THREE.Quaternion();
+  }
+  const limitedNormal = angle > maxTiltRadians
+    ? terrainUp.clone().lerp(normal, maxTiltRadians / angle).normalize()
+    : normal;
+  return new THREE.Quaternion().setFromUnitVectors(terrainUp, limitedNormal);
+}
+
+function sampleNormal(terrain: TerrainCollisionData, x: number, z: number, step: number): THREE.Vector3 {
+  const left = sampleHeight(terrain, x - step, z);
+  const right = sampleHeight(terrain, x + step, z);
+  const down = sampleHeight(terrain, x, z - step);
+  const up = sampleHeight(terrain, x, z + step);
+  return new THREE.Vector3(left - right, step * 2, down - up).normalize();
 }
 
 function sampleHeight(terrain: TerrainCollisionData, x: number, z: number): number {

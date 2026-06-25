@@ -40,12 +40,14 @@ export function addWestMoodboardScenic(scene: THREE.Scene): void {
       // (render/westVegetation.ts). On garde ici uniquement le decor non-prop.
       group.add(createWestVectorShoreline(terrain));
       group.add(createSnackKiosk(terrain));
+      group.add(createCreoleVillage(terrain));
+      group.add(createWoodPier());
+      group.add(createFishingBoat());
       group.add(createProceduralSigns(terrain));
       const isMapDebug = new URLSearchParams(window.location.search).has("mapDebug");
-      if (isMapDebug) {
-        group.add(createLagoonPatches());
-        group.add(createFoamBands());
-      } else {
+      group.add(createLagoonPatches());
+      group.add(createFoamBands());
+      if (!isMapDebug) {
         group.add(createCloudLayer());
       }
       scene.add(group);
@@ -68,6 +70,7 @@ function createWestVectorShoreline(terrain: TerrainCollisionData): THREE.Group {
     return group;
   }
 
+  group.add(createShoreStrip(points, "sea"));
   group.add(createShoreStrip(points, "sand"));
   return group;
 }
@@ -97,6 +100,11 @@ function createShoreStrip(points: readonly Point2[], kind: "sea" | "sand"): THRE
   }
 
   for (let i = 0; i < points.length - 1; i += 1) {
+    const current = points[i];
+    const nextPoint = points[i + 1];
+    if (!current || !nextPoint || Math.hypot(nextPoint.x - current.x, nextPoint.z - current.z) > 3.2) {
+      continue;
+    }
     const base = i * 2;
     const next = (i + 1) * 2;
     indices.push(base, next, base + 1, base + 1, next, next + 1);
@@ -269,6 +277,124 @@ function createSnackKiosk(terrain: TerrainCollisionData): THREE.Group {
   sign.castShadow = true;
 
   group.add(base, frontCounter, roofMesh, sign);
+  return group;
+}
+
+function createCreoleVillage(terrain: TerrainCollisionData): THREE.Group {
+  const group = new THREE.Group();
+  group.name = "ScenicWest_CreoleVillage";
+  const houses = [
+    { x: -81.2, z: 13.2, rot: -0.5, scale: 0.72, wall: 0xf3d6ab, roof: 0xc85a2a },
+    { x: -78.9, z: 11.2, rot: -0.38, scale: 0.62, wall: 0xbfe4dc, roof: 0xd86a33 },
+    { x: -76.6, z: 9.1, rot: -0.3, scale: 0.54, wall: 0xf5e6d0, roof: 0xbb4a28 },
+    { x: -74.2, z: 6.7, rot: -0.2, scale: 0.46, wall: 0xe9c78f, roof: 0xc0392b }
+  ] as const;
+
+  for (const house of houses) {
+    const prop = createCreoleHouse(house.wall, house.roof);
+    prop.position.set(house.x, sampleHeight(terrain, house.x, house.z) + 0.04, house.z);
+    prop.rotation.y = house.rot;
+    prop.scale.setScalar(house.scale);
+    group.add(prop);
+  }
+  return group;
+}
+
+function createCreoleHouse(wallColor: number, roofColor: number): THREE.Group {
+  const group = new THREE.Group();
+  group.name = "ScenicWest_CreoleHouse";
+  const wall = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.92, metalness: 0 });
+  const roof = new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.82, metalness: 0 });
+  const trim = new THREE.MeshStandardMaterial({ color: 0x2e8b8b, roughness: 0.82, metalness: 0 });
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.72, 1.0), wall);
+  body.position.y = 0.36;
+  body.castShadow = true;
+  body.receiveShadow = true;
+
+  const roofMesh = new THREE.Mesh(new THREE.ConeGeometry(0.92, 0.54, 4), roof);
+  roofMesh.position.y = 0.98;
+  roofMesh.rotation.y = Math.PI / 4;
+  roofMesh.scale.z = 0.78;
+  roofMesh.castShadow = true;
+
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.38, 0.035), trim);
+  door.position.set(0, 0.24, -0.52);
+
+  const windowGeometry = new THREE.BoxGeometry(0.2, 0.18, 0.035);
+  for (const x of [-0.42, 0.42]) {
+    const windowMesh = new THREE.Mesh(windowGeometry, trim);
+    windowMesh.position.set(x, 0.48, -0.525);
+    group.add(windowMesh);
+  }
+
+  group.add(body, roofMesh, door);
+  return group;
+}
+
+function createWoodPier(): THREE.Group {
+  const group = new THREE.Group();
+  group.name = "ScenicWest_WoodPier";
+  group.position.set(-91.4, seaLevel + 0.16, 22.2);
+  group.rotation.y = -0.18;
+
+  const wood = new THREE.MeshStandardMaterial({ color: 0x8b5a32, roughness: 0.9, metalness: 0 });
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.08, 1.9), wood);
+  deck.position.z = -0.48;
+  deck.castShadow = true;
+  deck.receiveShadow = true;
+  group.add(deck);
+
+  const plankGeometry = new THREE.BoxGeometry(0.44, 0.055, 0.14);
+  for (let index = 0; index < 5; index += 1) {
+    const plank = new THREE.Mesh(plankGeometry, wood);
+    plank.position.set(0, 0.055, 0.26 - index * 0.34);
+    plank.rotation.y = (index % 2 === 0 ? 0.04 : -0.04);
+    plank.castShadow = true;
+    group.add(plank);
+  }
+
+  const postGeometry = new THREE.CylinderGeometry(0.028, 0.038, 0.42, 6);
+  for (const z of [0.12, -0.72]) {
+    for (const x of [-0.24, 0.24]) {
+      const post = new THREE.Mesh(postGeometry, wood);
+      post.position.set(x, -0.28, z);
+      post.castShadow = true;
+      group.add(post);
+    }
+  }
+  return group;
+}
+
+function createFishingBoat(): THREE.Group {
+  const group = new THREE.Group();
+  group.name = "ScenicWest_FishingBoat";
+  group.position.set(-90.6, seaLevel + 0.2, 17.4);
+  group.rotation.y = 0.35;
+
+  const hullMaterial = new THREE.MeshStandardMaterial({ color: 0xb85d35, roughness: 0.82, metalness: 0 });
+  const trimMaterial = new THREE.MeshStandardMaterial({ color: 0xf2c66d, roughness: 0.7, metalness: 0 });
+
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.34, 0.46), hullMaterial);
+  hull.scale.z = 0.72;
+  hull.castShadow = true;
+  hull.receiveShadow = true;
+
+  const prow = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.42, 4), hullMaterial);
+  prow.position.x = 0.92;
+  prow.rotation.z = -Math.PI / 2;
+  prow.rotation.y = Math.PI / 4;
+  prow.castShadow = true;
+
+  const stern = prow.clone();
+  stern.position.x = -0.92;
+  stern.rotation.z = Math.PI / 2;
+
+  const trim = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.08, 0.08), trimMaterial);
+  trim.position.y = 0.2;
+  trim.position.z = -0.25;
+
+  group.add(hull, prow, stern, trim);
   return group;
 }
 

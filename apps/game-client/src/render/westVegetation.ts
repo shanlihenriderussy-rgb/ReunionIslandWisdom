@@ -89,14 +89,54 @@ function createProp(cand: VegCandidate, terrain: TerrainCollisionData): THREE.Gr
   const parent = new THREE.Group();
   parent.name = cand.id;
   parent.position.set(cand.x, sampleHeight(terrain, cand.x, cand.z) + 0.02, cand.z);
+  parent.quaternion.copy(terrainTiltQuaternion(terrain, cand.x, cand.z, maxTiltForCandidate(cand)));
   attachGltf(parent, cand.url, {
     name: cand.id,
     targetHeight: cand.height,
     rotationY: cand.rot,
     castShadow: true,
-    receiveShadow: true
+    receiveShadow: true,
+    materialMode: "westVegetation"
   });
   return parent;
+}
+
+
+const terrainUp = new THREE.Vector3(0, 1, 0);
+
+function maxTiltForCandidate(cand: VegCandidate): number {
+  if (cand.id.includes("rock") || cand.id.includes("barrier") || cand.id.includes("ground")) {
+    return 0.42;
+  }
+  if (cand.id.includes("bush")) {
+    return 0.28;
+  }
+  return 0.12;
+}
+
+function terrainTiltQuaternion(
+  terrain: TerrainCollisionData,
+  x: number,
+  z: number,
+  maxTiltRadians: number
+): THREE.Quaternion {
+  const normal = sampleNormal(terrain, x, z, 0.9);
+  const angle = terrainUp.angleTo(normal);
+  if (angle <= 0.0001) {
+    return new THREE.Quaternion();
+  }
+  const limitedNormal = angle > maxTiltRadians
+    ? terrainUp.clone().lerp(normal, maxTiltRadians / angle).normalize()
+    : normal;
+  return new THREE.Quaternion().setFromUnitVectors(terrainUp, limitedNormal);
+}
+
+function sampleNormal(terrain: TerrainCollisionData, x: number, z: number, step: number): THREE.Vector3 {
+  const left = sampleHeight(terrain, x - step, z);
+  const right = sampleHeight(terrain, x + step, z);
+  const down = sampleHeight(terrain, x, z - step);
+  const up = sampleHeight(terrain, x, z + step);
+  return new THREE.Vector3(left - right, step * 2, down - up).normalize();
 }
 
 function distanceToPath(x: number, z: number): number {

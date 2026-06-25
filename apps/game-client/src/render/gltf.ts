@@ -25,6 +25,7 @@ type ModelOptions = {
   receiveShadow?: boolean;
   hideFallback?: boolean;
   userDataKey?: string;
+  materialMode?: "westVegetation";
 };
 
 type LoadedGltf = {
@@ -93,6 +94,7 @@ export function attachGltf(parent: THREE.Group, url: string, options: ModelOptio
   void loadGltfGroup(url)
     .then(({ scene: model, animations }) => {
       normalizeModel(model, options);
+      applyMaterialOptions(model, options);
       applyShadowOptions(model, options);
       if (options.userDataKey) {
         parent.userData[options.userDataKey] = model;
@@ -124,6 +126,7 @@ export function addGltfProp(
   void loadGltfGroup(url)
     .then(({ scene: model }) => {
       normalizeModel(model, options);
+      applyMaterialOptions(model, options);
       applyShadowOptions(model, options);
       if (options.name) {
         model.name = options.name;
@@ -201,6 +204,49 @@ function prepareObject(object: THREE.Object3D): void {
   });
 }
 
+
+function applyMaterialOptions(object: THREE.Object3D, options: ModelOptions): void {
+  if (options.materialMode !== "westVegetation") {
+    return;
+  }
+
+  object.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) {
+      return;
+    }
+
+    if (Array.isArray(child.material)) {
+      child.material = child.material.map((material) => tuneWestVegetationMaterial(material));
+      return;
+    }
+
+    child.material = tuneWestVegetationMaterial(child.material);
+  });
+}
+
+function tuneWestVegetationMaterial(material: THREE.Material): THREE.Material {
+  const tuned = material.clone();
+  tuned.side = THREE.DoubleSide;
+
+  if (tuned instanceof THREE.MeshStandardMaterial || tuned instanceof THREE.MeshBasicMaterial) {
+    const maxChannel = Math.max(tuned.color.r, tuned.color.g, tuned.color.b);
+    if (maxChannel < 0.12) {
+      tuned.color.setHex(0x1f3f25);
+    } else if (tuned.color.g >= tuned.color.r && tuned.color.g >= tuned.color.b) {
+      tuned.color.lerp(new THREE.Color(0x67a85a), 0.22);
+    }
+  }
+
+  if (tuned instanceof THREE.MeshStandardMaterial) {
+    tuned.metalness = 0;
+    tuned.roughness = Math.max(tuned.roughness, 0.82);
+    tuned.emissive.setHex(0x0d2112);
+    tuned.emissiveIntensity = Math.max(tuned.emissiveIntensity, 0.045);
+  }
+
+  tuned.needsUpdate = true;
+  return tuned;
+}
 function applyShadowOptions(object: THREE.Object3D, options: ModelOptions): void {
   if (options.castShadow === undefined && options.receiveShadow === undefined) {
     return;

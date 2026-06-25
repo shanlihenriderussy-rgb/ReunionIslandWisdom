@@ -12,7 +12,8 @@
         "corepack pnpm --filter @riw/game-client lint",
         "corepack pnpm --filter @riw/game-client build",
         "corepack pnpm cook:web",
-        "corepack pnpm package:web"
+        "corepack pnpm package:web",
+        "corepack pnpm cook:desktop"
       ]
     },
     {
@@ -27,7 +28,8 @@
   "phases": [
     { "id": "validate", "command": "corepack pnpm --filter @riw/game-client typecheck && corepack pnpm --filter @riw/game-client lint" },
     { "id": "cook-web", "command": "corepack pnpm cook:web" },
-    { "id": "package-web", "command": "corepack pnpm package:web" }
+    { "id": "package-web", "command": "corepack pnpm package:web" },
+    { "id": "cook-desktop", "command": "corepack pnpm cook:desktop", "requires": ["rust", "tauri-cli"], "platform": "windows" }
   ],
   "securityRules": [
     "Pas de secret cote client.",
@@ -38,6 +40,7 @@
   "artifacts": {
     "webZip": "output/reunion-island-wisdom-web-<version>-<timestamp>.zip",
     "clientDist": "apps/game-client/dist",
-    "publicManifest": "apps/game-client/public/manifest.webmanifest"
+    "publicManifest": "apps/game-client/public/manifest.webmanifest",
+    "desktopInstaller": "apps/game-client/src-tauri/target/release/bundle/{msi,nsis}/Reunion Island Wisdom_<version>_x64*.{msi,exe}"
   }
 }

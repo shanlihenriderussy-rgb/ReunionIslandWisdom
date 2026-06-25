@@ -11,6 +11,8 @@ Grille et process : voir [[03-playtests]]. Detail par bug : [[_templates/bug]].
 ### P1 — majeur (no-go sauf contournement)
 
 - [ ] Remplacer le relief STL par un MNT fiable IGN RGE ALTI D974.
+- [ ] Audit visuel global no-go : aligner zone de depart, objectif HUD, label zone, PNJ et couches monde. Voir [[playtests/2026-06-25-audit-visuel-global]].
+- [x] Fix interaction `E` : serveur authoritative realigne temporairement sur la zone Ouest, sinon il refusait les PNJ par distance. Voir [[iterations/2026-06-25-fix-interaction-e]].
 
 ### P2 — mineur (go possible)
 
@@ -95,3 +97,18 @@ Detail complet : [[24-hebergement-production]]. Decision : [[04-decisions]] ADR-
 - [x] Valider `corepack pnpm release:web` hors sandbox : zip OK `output/reunion-island-wisdom-web-0.1.0-20260625-031928.zip`.
 - [ ] Tester installation Chrome/Edge depuis le zip servi localement.
 - [ ] Decider si prochaine etape = zip serveur separe ou Tauri 2 Windows.
+
+## Bugs visuels
+
+- [x] Fix visuel screenshots ouest : sentier adapte au devers, props inclines, vegetation moins noire, terrain chunks adoucis. Voir [[iterations/2026-06-25-west-visual-slope-shader-fix]].
+- [x] Passe B1 fidelite references : lagon/shoreline visibles en vue normale, ponton, barque, cases creoles procedurales, sentier plus sable. Voir [[iterations/2026-06-25-codex-fidelite-visuelle-b1]].
+- [ ] P1 : choisir la zone active de build (Fournaise ou Ouest) et synchroniser spawn + objectifs + zone label + focus carte.
+- [ ] P1 : mettre les couches monde non actives derriere flag debug (addWestBlockout, addFournaiseBlockout, scenic, overlays).
+- [ ] P1 : desactiver PNJ/minimap/gauges/hotbar mockes tant qu'ils ne sont pas portes par le gameplay.
+- [ ] P1 : empecher le chargement du GLB monolithique quand le terrain streame par chunks est actif.
+- [ ] P2 : revalider densite vegetation, couleur noire residuelle, chemin orange et plateformes sable apres nouvelle capture.
+- [ ] P2 : revalider la ressemblance B1 par capture desktop/mobile apres la passe Codex.
+- [ ] Revalider en PWA / Chrome apres build hors sandbox.
+- [x] Package web robuste : staging versionne pour eviter les dossiers verrouilles par serveur local.
+
+

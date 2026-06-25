@@ -34,6 +34,7 @@
 - [[23-design-system-hud]] — tokens et composants HUD
 - [[24-hebergement-production]] — infra prod (Cloudflare Pages + Fly.io)
 - [[25-programme-installable-mcp]] — PWA, zip, build/cook MCP
+- [[26-cowork-claude-codex-fidelite-visuelle]] — prompts Claude + Codex pour fidelite references
 
 ## Boucle hebdo
 

@@ -253,3 +253,48 @@ Risques :
 
 - Cache service worker a surveiller avec les gros GLB.
 - Build Vite peut encore etre bloque par sandbox Windows (`spawn EPERM`) ; validation hors sandbox necessaire si present.
+
+## ADR-010 - Programme desktop installable : wrapper Tauri (.msi/.exe)
+
+Date : 2026-06-25
+Statut : accepte (decision explicite Shan), scaffold pose, build Windows valide le 2026-06-25.
+
+Decision :
+
+- Ajouter un wrapper desktop Tauri 2 par-dessus le client web existant.
+- Cible : installeurs Windows `.msi` (WiX) et `.exe` (NSIS).
+- Le client reste un client web pur ; Tauri ne fait qu'embarquer le `dist` dans une WebView native.
+- Le serveur Colyseus reste distant et authoritative (choix Shan : client -> serveur distant, pas de serveur embarque).
+
+Pourquoi :
+
+- Shan a choisi explicitement "les deux" : PWA web installable + programme desktop.
+- Leve l'exception stack figee de [[CLAUDE]] (interdiction React/Next/moteur) : Tauri n'est ni un framework UI ni un moteur de jeu, c'est une coque de distribution. Decision tracee ici comme requis.
+- Tauri (Rust + WebView systeme) reste leger vs Electron, coherent avec la cible mobile/web first.
+
+Implementation :
+
+- `apps/game-client/src-tauri/` : `Cargo.toml`, `tauri.conf.json` (v2), `src/main.rs`, `src/lib.rs`, `build.rs`, `capabilities/default.json`, `icons/` (ico + png).
+- CSP Tauri : `connect-src` limite a `self` + `wss://riw-game-server.fly.dev` (TLS only) ; `script-src 'self' 'wasm-unsafe-eval'` pour le wasm Rapier.
+- `apps/game-client/package.json` : scripts `tauri`, `tauri:dev`, `tauri:build` + devDep `@tauri-apps/cli`.
+- racine `package.json` : `desktop:dev`, `cook:desktop`.
+- `mcp/riw-build-cook.mcp.json` : phase `cook-desktop` ajoutee (requires rust + tauri-cli, platform windows).
+
+Validation build (machine Shan, Windows) :
+
+- `corepack pnpm install` : OK.
+- `corepack pnpm --filter @riw/game-client typecheck` : OK.
+- `corepack pnpm --filter @riw/game-client lint` : OK.
+- `corepack pnpm cook:web` : OK.
+- `corepack pnpm cook:desktop` : OK.
+- Artefacts :
+  - `apps/game-client/src-tauri/target/release/riw.exe` ;
+  - `apps/game-client/src-tauri/target/release/bundle/msi/Reunion Island Wisdom_0.1.0_x64_en-US.msi` (22,82 Mo) ;
+  - `apps/game-client/src-tauri/target/release/bundle/nsis/Reunion Island Wisdom_0.1.0_x64-setup.exe` (21,76 Mo).
+
+Consequence :
+
+- 1 seule base de code client pour 3 sorties : web hebergeable, PWA installable, desktop `.msi/.exe`.
+- Le `target/` Rust est ignore (gitignore src-tauri) ; ne pas committer les binaires.
+- Signature de code Windows non couverte (SmartScreen affichera un avertissement) : decision signature reportee.
+- A faire ensuite : sortir le GLB 18 Mo du bundle (poids installeur), tester WebView2 au premier lancement.

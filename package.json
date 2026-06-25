@@ -14,7 +14,9 @@
     "typecheck": "corepack pnpm -r typecheck",
     "cook:web": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-web-release.ps1",
     "package:web": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-web-release.ps1 -SkipBuild",
-    "release:web": "corepack pnpm --filter @riw/game-client typecheck && corepack pnpm --filter @riw/game-client lint && powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-web-release.ps1"
+    "release:web": "corepack pnpm --filter @riw/game-client typecheck && corepack pnpm --filter @riw/game-client lint && powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-web-release.ps1",
+    "desktop:dev": "corepack pnpm --filter @riw/game-client tauri:dev",
+    "cook:desktop": "corepack pnpm --filter @riw/game-client tauri:build"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",

@@ -248,10 +248,11 @@ function applyTerrainChunkMaterial(mesh: THREE.Mesh): void {
   mesh.material = new THREE.MeshStandardMaterial({
     color: hasVertexColors ? 0xffffff : 0x74a85a,
     vertexColors: hasVertexColors,
-    roughness: 0.95,
+    roughness: 0.98,
     metalness: 0,
-    // Facettes nettes low-poly (style moodboard) au lieu du lissage qui rend le sol "bouillie".
-    flatShading: true,
+    emissive: 0x294722,
+    emissiveIntensity: 0.055,
+    flatShading: false,
     side: THREE.DoubleSide
   });
   mesh.material.needsUpdate = true;

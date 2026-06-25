@@ -10,13 +10,14 @@ $root = Split-Path -Parent $toolsDir
 $clientDir = Join-Path $root "apps\game-client"
 $distDir = Join-Path $clientDir "dist"
 $outputDir = Join-Path $root "output"
-$stageDir = Join-Path $outputDir "reunion-island-wisdom-web"
-
 if ([string]::IsNullOrWhiteSpace($Version)) {
   $packageJson = Get-Content -Raw -LiteralPath (Join-Path $root "package.json") | ConvertFrom-Json
   $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
   $Version = "$($packageJson.version)-$stamp"
 }
+
+$stageName = "reunion-island-wisdom-web-$Version"
+$stageDir = Join-Path $outputDir $stageName
 
 if (-not $SkipBuild) {
   Push-Location $root
@@ -61,7 +62,8 @@ Contenu : build statique Vite/PWA.
 Version : $Version
 
 Test local :
-  cd reunion-island-wisdom-web
+  Extraire le zip dans un dossier vide.
+  Se placer dans le dossier extrait, la ou se trouve index.html.
   python -m http.server 5173
   ouvrir http://localhost:5173
 
@@ -80,10 +82,10 @@ Note :
 "@
 Set-Content -LiteralPath (Join-Path $stageDir "README_INSTALL.txt") -Value $installReadme -NoNewline
 
-$zipPath = Join-Path $outputDir "reunion-island-wisdom-web-$Version.zip"
+$zipPath = Join-Path $outputDir "$stageName.zip"
 if (Test-Path -LiteralPath $zipPath) {
   Remove-Item -LiteralPath $zipPath -Force
 }
-Compress-Archive -LiteralPath $stageDir -DestinationPath $zipPath -CompressionLevel Optimal
+Compress-Archive -Path (Join-Path $stageDir "*") -DestinationPath $zipPath -CompressionLevel Optimal
 
 Write-Host "Package OK: $zipPath"

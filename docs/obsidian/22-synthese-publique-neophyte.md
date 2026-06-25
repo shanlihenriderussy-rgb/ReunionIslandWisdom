@@ -1,3 +1,150 @@
+## 2026-06-25 06:35 - Rapprochement visuel avec la cote ouest
+
+Resume public :
+
+- La zone Saint-Paul / Saint-Gilles a recu une passe pour mieux ressembler aux images de reference.
+- Le lagon turquoise et l'ecume sont maintenant visibles en jeu normal, pas seulement dans la vue debug.
+- De petits elements de decor proceduraux ont ete ajoutes : ponton, barque et maisons creoles en arriere-plan.
+- Le sentier devient plus sable/terre claire, moins orange.
+
+Impact pour le projet :
+
+- La zone ouest commence a lire comme un vrai diorama de littoral reunionnais.
+- Aucun asset externe ajoute : tout reste leger et genere par le code.
+- La validation image reste necessaire avant de figer ce style.
+
+Statut :
+
+- Passe Codex appliquee. Typecheck, lint et build OK.
+- Capture desktop ajoutee pour controle. Il reste un element clair trop proche du premier plan gauche a nettoyer.
+
+## 2026-06-25 01:42 - Le jeu devient un vrai programme a installer
+
+En clair :
+
+- Jusqu'ici le jeu se lancait surtout en mode "developpement". On bascule
+  maintenant vers un vrai programme que l'on peut installer et partager.
+- Trois formes de sortie, une seule base de code :
+  1. version web normale (a heberger en ligne) ;
+  2. application installable depuis le navigateur (bouton "Installer", icone
+     sur le bureau ou le telephone, fonctionne meme avec une connexion faible) ;
+  3. programme Windows classique a installer (fichier `.msi` / `.exe`).
+- Le jeu reste multijoueur : le programme installe se connecte toujours au
+  serveur du monde partage en ligne (il n'embarque pas le serveur).
+- On peut aussi fabriquer un fichier `.zip` pret a distribuer en une commande.
+
+Comment c'est range :
+
+- L'application Windows est construite avec un outil leger (Tauri) qui place le
+  jeu dans une fenetre, sans alourdir le projet ni changer le moteur.
+- Un petit "contrat" decrit qui fait quoi entre les assistants : un cote
+  fabrique/teste/empaquette (Codex), l'autre tient la documentation et les
+  decisions (Claude). C'est l'esprit "studio de production".
+
+Securite :
+
+- Le programme ne parle qu'au serveur officiel du jeu, en connexion chiffree.
+- Aucune cle secrete cote joueur. Les gros fichiers de relief ne sont pas mis
+  dans le paquet distribue.
+
+Statut :
+
+- Web installable (PWA) : en place.
+- Paquet `.zip` web : commande prete (`cook:web`).
+- Programme Windows : tout est prepare ; la fabrication du `.msi`/`.exe` se fait
+  sur l'ordinateur de Shan (besoin de Rust + outils Windows).
+- A surveiller : le gros fichier de relief de 18 Mo, a sortir du paquet plus tard.
+- Detail technique : [[04-decisions]] ADR-009 et ADR-010,
+  [[iterations/2026-06-25-desktop-tauri-shell]].
+
+## 2026-06-25 01:29 - Verification des fumerolles du volcan
+
+Resume public :
+
+- Hier on a ajoute de petits panaches de vapeur autour du cratere du Piton de la Fournaise, pour rappeler que le volcan est vivant.
+- Aujourd'hui on a verifie ce travail : la vapeur se pose bien au sol, reste discrete, et ne gene pas les reperes qui indiquent ou aller.
+- Bonne nouvelle : rien ne bloque le joueur, on passe a travers la vapeur.
+
+Impact pour le projet :
+
+- Un petit detail d'ambiance de plus, sans alourdir le jeu (aucun objet lourd ajoute).
+- Un mini-defaut a corriger demain : la vapeur transparente peut laisser un leger halo devant les rochers. Correction simple prevue.
+
+Statut :
+
+- Verification technique OK. Petite retouche programmee pour la prochaine etape.
+- Detail : [[iterations/2026-06-25-test-fumarole]].
+
+## 2026-06-25 06:10 - Interaction PNJ reparee
+
+Resume public :
+
+- La touche `E` etait bien detectee, mais le serveur croyait que le joueur etait ailleurs.
+- Le client placait le joueur pres des personnages de l'ouest, pendant que le serveur le gardait au volcan.
+- Le serveur refusait donc l'interaction par securite, car la distance semblait trop grande.
+
+Impact pour le projet :
+
+- La build de test revient temporairement sur la zone Ouest pour que les dialogues PNJ fonctionnent.
+- Le chantier visuel global reste ouvert : il faudra choisir une seule zone active pour tout aligner proprement.
+
+Statut :
+
+- Correctif serveur applique. Validation en jeu a faire : s'approcher d'un PNJ et appuyer sur `E`.
+
+## 2026-06-25 05:55 - Installeur Windows genere
+
+Resume public :
+
+- Le projet produit maintenant un zip web et un programme Windows installable.
+- Deux formats desktop ont ete generes : un `.msi` et un `setup.exe`.
+- Le meme client sert aux trois sorties : web, PWA, desktop.
+
+Impact pour le projet :
+
+- Reunion Island Wisdom n'est plus seulement une demo lancee en developpement.
+- Le jeu peut maintenant etre transmis comme paquet de test.
+- Il reste a alleger le paquet et a corriger la coherence visuelle avant demo publique.
+
+Statut :
+
+- Build web OK. Build desktop Tauri OK. Installeurs non signes, donc SmartScreen peut avertir.
+
+## 2026-06-25 04:25 - Audit visuel global
+
+Resume public :
+
+- Un audit complet de l'ecran de jeu a ete lance apres les captures.
+- Le probleme principal n'est pas seulement graphique : le decor montre une zone de l'ouest, tandis que les objectifs parlent encore du volcan.
+- Plusieurs elements d'interface ressemblent a des fonctions finales alors qu'ils sont encore des maquettes.
+
+Impact pour le projet :
+
+- La prochaine correction doit d'abord choisir une seule zone active pour la demonstration.
+- Ensuite seulement on nettoie le rendu : couches de decor, personnages, mini-carte, jauges et chemins.
+- Objectif : que le joueur comprenne immediatement ou il est et quoi faire.
+
+Statut :
+
+- Audit documente. Build de demonstration publique en no-go tant que la coherence zone/HUD n'est pas corrigee.
+
+## 2026-06-25 04:00 - Le decor suit mieux les pentes
+
+Resume public :
+
+- Les chemins, rochers et plantes de la zone ouest ont ete ajustes pour mieux suivre les pentes du terrain.
+- Le rendu de la vegetation a ete adouci pour eviter les grosses masses noires visibles dans les captures.
+- Le sol streamé par morceaux reçoit aussi un shader plus fondu.
+
+Impact pour le projet :
+
+- La scene parait moins posee a plat sur la montagne.
+- Les objets s'integrent mieux au relief de La Reunion.
+- Le rendu reste leger et compatible avec le style low-poly.
+
+Statut :
+
+- Validation technique OK. Reste a confirmer en image apres build hors sandbox.
 
 ## 2026-06-25 00:00 - Le jeu devient distribuable
 
