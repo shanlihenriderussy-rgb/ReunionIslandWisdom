@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { terrainAssets } from "@riw/assets";
-import { WEST_BLOCKOUT_COLLIDERS } from "../world/westBlockout";
+import { isOnWestPath, WEST_BLOCKOUT_COLLIDERS } from "../world/westBlockout";
 
 type Point2 = {
   x: number;
@@ -17,7 +17,25 @@ type TerrainCollisionData = {
   gridX: number;
   gridZ: number;
   outline: Point2[];
-  heights: number[];
+  heights: Array<number | null>;
+};
+
+type ChunkHeightfieldData = {
+  bounds: {
+    minX: number;
+    maxX: number;
+    minZ: number;
+    maxZ: number;
+  };
+  gridX: number;
+  gridZ: number;
+  heights: Array<number | null>;
+};
+
+type ChunkManifestData = {
+  source?: string;
+  kind?: string;
+  chunks?: Array<{ heightfield?: string }>;
 };
 
 type CircleCollider = {
@@ -28,6 +46,8 @@ type CircleCollider = {
 };
 
 const playerRadius = 0.22;
+const westPlayableMinHeight = 0.12;
+const westPlayableHalfWidth = 5.5;
 const defaultBounds = {
   minX: -77.5,
   maxX: 77.5,
@@ -37,6 +57,7 @@ const defaultBounds = {
 
 export class WorldCollision {
   private terrain: TerrainCollisionData | null = null;
+  private chunkTerrains: ChunkHeightfieldData[] = [];
   // Barrieres de blockout (limites de zone) + colliders props injectes au runtime
   // par le generateur de vegetation (render/westVegetation.ts).
   private readonly solids: CircleCollider[] = [...WEST_BLOCKOUT_COLLIDERS];
@@ -83,11 +104,17 @@ export class WorldCollision {
     try {
       const response = await fetch(terrainAssets.laReunion.reliefCollision);
       if (!response.ok) {
-        return;
+        throw new Error(`HTTP ${response.status}`);
       }
       this.terrain = (await response.json()) as TerrainCollisionData;
     } catch (error) {
       console.warn("Terrain collision load failed", error);
+    }
+
+    try {
+      this.chunkTerrains = await loadChunkHeightfields();
+    } catch (error) {
+      console.warn("Terrain chunk collision load failed", error);
     }
   }
 
@@ -101,30 +128,31 @@ export class WorldCollision {
   }
 
   private getGroundHeight(x: number, z: number): number {
+    const chunkHeight = this.getChunkGroundHeight(x, z);
+    if (chunkHeight !== null) {
+      return chunkHeight;
+    }
+
     const terrain = this.terrain;
     if (!terrain) {
       return 0;
     }
 
-    const { bounds, gridX, gridZ, heights } = terrain;
-    const tx = THREE.MathUtils.clamp((x - bounds.minX) / (bounds.maxX - bounds.minX), 0, 1);
-    const tz = THREE.MathUtils.clamp((z - bounds.minZ) / (bounds.maxZ - bounds.minZ), 0, 1);
-    const gx = tx * (gridX - 1);
-    const gz = tz * (gridZ - 1);
-    const x0 = Math.floor(gx);
-    const z0 = Math.floor(gz);
-    const x1 = Math.min(gridX - 1, x0 + 1);
-    const z1 = Math.min(gridZ - 1, z0 + 1);
-    const fx = gx - x0;
-    const fz = gz - z0;
+    const height = sampleHeight(terrain, x, z) ?? 0;
+    return isOnWestPath(x, z, westPlayableHalfWidth) ? Math.max(height, westPlayableMinHeight) : height;
+  }
 
-    const h00 = heights[z0 * gridX + x0] ?? 0;
-    const h10 = heights[z0 * gridX + x1] ?? h00;
-    const h01 = heights[z1 * gridX + x0] ?? h00;
-    const h11 = heights[z1 * gridX + x1] ?? h00;
-    const hx0 = THREE.MathUtils.lerp(h00, h10, fx);
-    const hx1 = THREE.MathUtils.lerp(h01, h11, fx);
-    return THREE.MathUtils.lerp(hx0, hx1, fz);
+  private getChunkGroundHeight(x: number, z: number): number | null {
+    for (const chunk of this.chunkTerrains) {
+      if (!isInsideBounds(x, z, chunk.bounds)) {
+        continue;
+      }
+      const height = sampleHeight(chunk, x, z);
+      if (height !== null) {
+        return height;
+      }
+    }
+    return null;
   }
 
   private resolveSolidCollisions(position: THREE.Vector3): void {
@@ -173,4 +201,65 @@ function pointInPolygon(x: number, z: number, polygon: Point2[]): boolean {
     }
   }
   return inside;
+}
+
+async function loadChunkHeightfields(): Promise<ChunkHeightfieldData[]> {
+  const response = await fetch(terrainAssets.laReunion.chunkManifest);
+  if (!response.ok) {
+    return [];
+  }
+  const manifest = (await response.json()) as ChunkManifestData;
+  if (manifest.source !== "IGN RGE ALTI D974" || manifest.kind !== "terrain-stream-manifest") {
+    return [];
+  }
+
+  const entries = manifest.chunks ?? [];
+  const chunks = await Promise.all(
+    entries.map(async (entry) => {
+      if (!entry.heightfield) {
+        return null;
+      }
+      const chunkResponse = await fetch(entry.heightfield);
+      if (!chunkResponse.ok) {
+        return null;
+      }
+      return (await chunkResponse.json()) as ChunkHeightfieldData;
+    })
+  );
+  return chunks.filter((chunk): chunk is ChunkHeightfieldData => chunk !== null);
+}
+
+function sampleHeight(
+  terrain: Pick<ChunkHeightfieldData, "bounds" | "gridX" | "gridZ" | "heights">,
+  x: number,
+  z: number
+): number | null {
+  const { bounds, gridX, gridZ, heights } = terrain;
+  const tx = THREE.MathUtils.clamp((x - bounds.minX) / (bounds.maxX - bounds.minX), 0, 1);
+  const tz = THREE.MathUtils.clamp((z - bounds.minZ) / (bounds.maxZ - bounds.minZ), 0, 1);
+  const gx = tx * (gridX - 1);
+  const gz = tz * (gridZ - 1);
+  const x0 = Math.floor(gx);
+  const z0 = Math.floor(gz);
+  const x1 = Math.min(gridX - 1, x0 + 1);
+  const z1 = Math.min(gridZ - 1, z0 + 1);
+  const fx = gx - x0;
+  const fz = gz - z0;
+
+  const h00 = finiteHeightAt(heights, z0 * gridX + x0);
+  const h10 = finiteHeightAt(heights, z0 * gridX + x1);
+  const h01 = finiteHeightAt(heights, z1 * gridX + x0);
+  const h11 = finiteHeightAt(heights, z1 * gridX + x1);
+  if (h00 === null || h10 === null || h01 === null || h11 === null) {
+    return null;
+  }
+
+  const hx0 = THREE.MathUtils.lerp(h00, h10, fx);
+  const hx1 = THREE.MathUtils.lerp(h01, h11, fx);
+  return THREE.MathUtils.lerp(hx0, hx1, fz);
+}
+
+function finiteHeightAt(heights: ReadonlyArray<number | null>, index: number): number | null {
+  const height = heights[index];
+  return typeof height === "number" && Number.isFinite(height) ? height : null;
 }

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { terrainAssets } from "@riw/assets";
-import { attachGltf } from "./gltf";
+import { buildGltfInstances, type GltfInstanceSpec } from "./gltf";
 import {
   generateWestVegetation,
   WEST_PATH_CENTERLINE,
@@ -46,11 +46,16 @@ export function addWestVegetation(
       group.name = "WestVegetation_SaintPaulSaintGilles";
       const colliders: RuntimeCollider[] = [];
 
+      // 1) Filtrage + colliders (donnees, pas de draw call).
+      // 2) Regroupement par URL : 1 GLB -> N InstancedMesh au lieu de N props.
+      const specsByUrl = new Map<string, GltfInstanceSpec[]>();
       for (const cand of generateWestVegetation()) {
         if (!accept(cand, terrain)) {
           continue;
         }
-        group.add(createProp(cand, terrain));
+        const specs = specsByUrl.get(cand.url) ?? [];
+        specs.push(instanceSpecFor(cand, terrain));
+        specsByUrl.set(cand.url, specs);
         if (cand.colliderRadius > 0) {
           colliders.push({ kind: "circle", x: cand.x, z: cand.z, radius: cand.colliderRadius });
         }
@@ -59,6 +64,23 @@ export function addWestVegetation(
       scene.add(group);
       generatedColliders = colliders;
       onColliders?.(colliders);
+
+      // Pose instanciee (asynchrone par GLB) : ajoute les InstancedMesh au fur et a mesure.
+      for (const [url, specs] of specsByUrl) {
+        void buildGltfInstances(url, specs, {
+          materialMode: "westVegetation",
+          castShadow: true,
+          receiveShadow: true
+        })
+          .then((meshes) => {
+            for (const mesh of meshes) {
+              group.add(mesh);
+            }
+          })
+          .catch((error: unknown) => {
+            console.warn(`West vegetation instancing failed: ${url}`, error);
+          });
+      }
     })
     .catch((error: unknown) => {
       console.warn("West vegetation layer failed", error);
@@ -85,28 +107,28 @@ function accept(cand: VegCandidate, terrain: TerrainCollisionData): boolean {
   return true;
 }
 
-function createProp(cand: VegCandidate, terrain: TerrainCollisionData): THREE.Group {
-  const parent = new THREE.Group();
-  parent.name = cand.id;
-  parent.position.set(cand.x, sampleHeight(terrain, cand.x, cand.z) + 0.02, cand.z);
-  parent.quaternion.copy(terrainTiltQuaternion(terrain, cand.x, cand.z, maxTiltForCandidate(cand)));
-  attachGltf(parent, cand.url, {
-    name: cand.id,
+// Convertit un candidat en spec d'instance : meme placement que l'ancien createProp
+// (sol + 0.02, tilt borne selon le type), scale/rotation portes par l'InstancedMesh.
+function instanceSpecFor(cand: VegCandidate, terrain: TerrainCollisionData): GltfInstanceSpec {
+  return {
+    position: new THREE.Vector3(cand.x, sampleHeight(terrain, cand.x, cand.z) + 0.02, cand.z),
+    quaternion: terrainTiltQuaternion(terrain, cand.x, cand.z, maxTiltForCandidate(cand)),
     targetHeight: cand.height,
-    rotationY: cand.rot,
-    castShadow: true,
-    receiveShadow: true,
-    materialMode: "westVegetation"
-  });
-  return parent;
+    rotationY: cand.rot
+  };
 }
 
 
 const terrainUp = new THREE.Vector3(0, 1, 0);
 
 function maxTiltForCandidate(cand: VegCandidate): number {
-  if (cand.id.includes("rock") || cand.id.includes("barrier") || cand.id.includes("ground")) {
+  // Rochers / barrieres : suivent franchement la pente (0.42 ~ 24°).
+  if (cand.id.includes("rock") || cand.id.includes("barrier")) {
     return 0.42;
+  }
+  // Tapis de sol cote sentier : inclinaison reduite (0.32) pour rester lisible.
+  if (cand.id.includes("ground")) {
+    return 0.32;
   }
   if (cand.id.includes("bush")) {
     return 0.28;

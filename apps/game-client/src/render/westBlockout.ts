@@ -20,10 +20,8 @@ type TerrainCollisionData = {
   heights: number[];
 };
 
-const trailMaterial = new THREE.MeshStandardMaterial({
+const trailMaterial = new THREE.MeshBasicMaterial({
   color: 0xffffff,
-  roughness: 0.96,
-  metalness: 0,
   transparent: true,
   opacity: 0.94,
   depthWrite: false,
@@ -41,7 +39,7 @@ const boundaryMaterial = new THREE.MeshStandardMaterial({
 
 const trailSampleSpacing = 1.15;
 const trailHeightOffset = 0.045;
-const trailWidth = 2.55;
+const trailWidth = 2.18;
 const mafateLookTarget = new THREE.Vector2(-31.2, 22.7);
 
 export function addWestBlockout(scene: THREE.Scene): void {
@@ -76,18 +74,18 @@ function createTrailRibbon(
   const vertices: number[] = [];
   const colors: number[] = [];
   const indices: number[] = [];
-  const feather = new THREE.Color(0x8fba63);
-  const outer = new THREE.Color(0x8a6c40);
-  const shoulder = new THREE.Color(0xd0a15e);
-  const center = new THREE.Color(0xe1c17f);
+  const feather = new THREE.Color(0x7da65a);
+  const outer = new THREE.Color(0x7a6848);
+  const shoulder = new THREE.Color(0xb89056);
+  const center = new THREE.Color(0xd3b579);
   const crossSection = [
-    { offset: -0.68, lift: 0.012, color: feather },
-    { offset: -0.5, lift: 0.018, color: outer },
+    { offset: -0.72, lift: 0.01, color: feather },
+    { offset: -0.5, lift: 0.016, color: outer },
     { offset: -0.28, lift: 0.04, color: shoulder },
     { offset: 0, lift: 0.075, color: center },
     { offset: 0.28, lift: 0.04, color: shoulder },
-    { offset: 0.5, lift: 0.018, color: outer },
-    { offset: 0.68, lift: 0.012, color: feather }
+    { offset: 0.5, lift: 0.016, color: outer },
+    { offset: 0.72, lift: 0.01, color: feather }
   ] as const;
 
   for (let index = 0; index < centers.length; index += 1) {
@@ -100,7 +98,9 @@ function createTrailRibbon(
     const tangent = new THREE.Vector2(next.x - previous.x, next.z - previous.z).normalize();
     const side = new THREE.Vector2(-tangent.y, tangent.x);
     for (const section of crossSection) {
-      const offset = section.offset * width;
+      const edgeFactor = Math.abs(section.offset);
+      const weave = Math.sin(index * 1.63 + section.offset * 5.7) * 0.09 + Math.sin(index * 0.43) * 0.05;
+      const offset = (section.offset + weave * edgeFactor) * width;
       const vx = point.x + side.x * offset;
       const vz = point.z + side.y * offset;
       vertices.push(vx, sampleHeight(terrain, vx, vz) + trailHeightOffset + section.lift, vz);

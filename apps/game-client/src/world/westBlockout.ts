@@ -17,9 +17,9 @@ export type BlockoutCollider = {
 };
 
 export const WEST_BLOCKOUT_SPAWN = {
-  x: -78,
-  y: 1.38,
-  z: 6,
+  x: -78.5,
+  y: 1.21,
+  z: 7.5,
   yaw: -0.45
 } as const;
 
@@ -46,7 +46,7 @@ export const WEST_BLOCKOUT_PATH = [
 
 export const WEST_BLOCKOUT_QUEST_MARKERS = [
   { id: "lagon-lookout", label: "Lire le lagon", x: -83, z: 21, color: 0x31c6d4 },
-  { id: "snack-start", label: "Depart snack", x: -78, z: 6, color: 0xf2c66d },
+  { id: "snack-start", label: "Depart snack", x: -78.5, z: 7.5, color: 0xf2c66d },
   { id: "car-jaune-stop", label: "Car Jaune", x: -70, z: -16, color: 0xf4c430 },
   { id: "ravine-gate", label: "Limite ravine", x: -66, z: -28, color: 0x67c26f },
   { id: "south-exit", label: "Sortie sud", x: -60, z: -36, color: 0xe05f42 },

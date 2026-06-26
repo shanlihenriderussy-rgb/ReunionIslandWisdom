@@ -10,36 +10,45 @@ import { addFournaiseBlockout } from "./fournaise";
 // Callback de remontee des colliders props generes (vers WorldCollision).
 export type ColliderSink = (colliders: readonly RuntimeCollider[]) => void;
 
+type ZoneVisualMode = "west" | "fournaise" | "all";
+
 // Niveau de la mer : noie les cotes (terrain qui plonge sous 0), laisse le hub au sec.
 const seaLevel = -0.38;
 const beachY = 0.055;
 
 export function configureWorld(scene: THREE.Scene, onColliders: ColliderSink = () => {}): void {
+  const visualMode = getZoneVisualMode();
+
   // Palette DA : voir docs/obsidian/09-direction-artistique.md
   // Cible visuelle : moodboard low-poly tropical, couleurs franches, ombres douces.
   scene.fog = new THREE.Fog(0xb9dcef, 145, 360);
   scene.background = new THREE.Color(0x9ed3f2);
 
-  // Ciel tropical + rebond végétation sol.
-  const hemi = new THREE.HemisphereLight(0xe8f4ff, 0x5f8e44, 1.78);
+  // Ciel tropical + rebond végétation sol (ground adouci pour ne pas verdir les plages).
+  const hemi = new THREE.HemisphereLight(0xe8f4ff, 0x4f7c39, 1.78);
   scene.add(hemi);
 
-  // Soleil fin de matinée — chaud, légèrement plus intense.
-  const sun = new THREE.DirectionalLight(0xffe2a5, 3.45);
+  // Soleil fin de matinée — chaud. Intensité abaissée (3.45 -> 2.9) : moins plat, ombres plus lisibles.
+  const sun = new THREE.DirectionalLight(0xffe2a5, 2.9);
   sun.position.set(22, 32, 16);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.bias = -0.0006; // réduit le bruit/acné d'ombre sur le relief
   scene.add(sun);
 
-  // Lagon tropical réunionnais — turquoise chaud.
+  // Lagon tropical réunionnais — bicolore proche/large (moodboard B1) :
+  // turquoise lagon près de l'origine -> bleu profond au large, via vertex colors.
+  // Pas de normalMap (aucun asset texture licencié dispo — cf. CLAUDE.md assets).
+  const oceanGeometry = new THREE.PlaneGeometry(520, 520, 32, 32);
+  applyOceanGradient(oceanGeometry);
   const ocean = new THREE.Mesh(
-    new THREE.PlaneGeometry(520, 520),
+    oceanGeometry,
     new THREE.MeshStandardMaterial({
-      color: 0x19aeca,
-      roughness: 0.58,
-      metalness: 0.02,
-      emissive: 0x073c45,
-      emissiveIntensity: 0.12
+      vertexColors: true,
+      roughness: 0.5,
+      metalness: 0.04,
+      emissive: 0x062f38,
+      emissiveIntensity: 0.1
     })
   );
   ocean.rotation.x = -Math.PI / 2;
@@ -48,19 +57,88 @@ export function configureWorld(scene: THREE.Scene, onColliders: ColliderSink = (
   scene.add(ocean);
 
   addLaReunionVectorMap(scene);
-  addWestBlockout(scene);
-  // Decor non-prop conserve : snack, panneaux, lagon, ecume, nuages.
-  addWestMoodboardScenic(scene);
-  // Vegetation luxuriante generee (seedee, ancree sol, corridor chemin, colliders serres).
-  // Remplace l'ancien semis worldObjects (supprime). Colliders remontes a la collision.
-  addWestVegetation(scene, onColliders);
-  // Props procéduraux zone de départ volcan (basalte/scories + reperes objectif).
-  addFournaiseBlockout(scene);
+  if (visualMode === "west" || visualMode === "all") {
+    addWestBlockout(scene);
+    // Decor non-prop conserve : snack, panneaux, lagon, ecume, nuages.
+    addWestMoodboardScenic(scene);
+    // Vegetation luxuriante generee (seedee, ancree sol, corridor chemin, colliders serres).
+    // Remplace l'ancien semis worldObjects (supprime). Colliders remontes a la collision.
+    addWestVegetation(scene, onColliders);
+  }
+  if (visualMode === "fournaise" || visualMode === "all") {
+    // Props proceduraux zone volcan. Hors build ouest par defaut pour eviter deux DA visibles.
+    addFournaiseBlockout(scene);
+  }
   addBiomeDebugOverlays(scene);
 }
 
-// Silhouette reelle OSM + relief STL, generes dans tools/build-lareunion-relief-map.mjs.
+function getZoneVisualMode(): ZoneVisualMode {
+  const params = new URLSearchParams(window.location.search);
+  const requested = params.get("visualZone");
+  if (requested === "fournaise" || requested === "all") {
+    return requested;
+  }
+  return "west";
+}
+
+// Bicolore océan : lagon turquoise près de l'origine, bleu profond au large.
+// La distance radiale est invariante par la rotation -PI/2 du plan : on calcule
+// donc le gradient dans l'espace local (x,y) du PlaneGeometry avant rotation.
+const oceanLagoon = new THREE.Color(0x60d4d1);
+const oceanDeep = new THREE.Color(0x0e6e84);
+const OCEAN_GRADIENT_RADIUS = 230; // m : rayon où l'on atteint le bleu profond
+
+function applyOceanGradient(geometry: THREE.PlaneGeometry): void {
+  const position = geometry.getAttribute("position");
+  const colors = new Float32Array(position.count * 3);
+  const color = new THREE.Color();
+  for (let i = 0; i < position.count; i += 1) {
+    const px = position.getX(i);
+    const py = position.getY(i);
+    const r = Math.min(1, Math.hypot(px, py) / OCEAN_GRADIENT_RADIUS);
+    // r*r : garde un large coeur lagon près de la côte, transition serrée au large.
+    color.copy(oceanLagoon).lerp(oceanDeep, r * r);
+    colors[i * 3] = color.r;
+    colors[i * 3 + 1] = color.g;
+    colors[i * 3 + 2] = color.b;
+  }
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+}
+
+// Terrain monolithique (GLB 18 Mo). N'est charge QUE si le streaming par chunks
+// RGE ALTI n'est pas disponible : sinon on evite le fetch+parse inutile (le streamer
+// fournit le relief et retirerait ce mesh de toute facon). Cf. ADR-005 + backlog perf.
 function addLaReunionVectorMap(scene: THREE.Scene): void {
+  void shouldUseChunkStreaming()
+    .then((streaming) => {
+      if (streaming) {
+        console.info("Terrain monolithique ignore : streaming RGE ALTI actif.");
+        return;
+      }
+      loadMonolithicRelief(scene);
+    })
+    .catch(() => {
+      // En cas d'echec de la sonde manifeste, on retombe sur le terrain monolithique.
+      loadMonolithicRelief(scene);
+    });
+}
+
+// Sonde legere : le manifeste de chunks (~38 ko) est-il un manifeste de streaming RGE ALTI valide ?
+async function shouldUseChunkStreaming(): Promise<boolean> {
+  try {
+    const response = await fetch(terrainAssets.laReunion.chunkManifest);
+    if (!response.ok) {
+      return false;
+    }
+    const data = (await response.json()) as { source?: string; kind?: string };
+    return data.source === "IGN RGE ALTI D974" && data.kind === "terrain-stream-manifest";
+  } catch {
+    return false;
+  }
+}
+
+// Silhouette reelle OSM + relief STL, generes dans tools/build-lareunion-relief-map.mjs.
+function loadMonolithicRelief(scene: THREE.Scene): void {
   void loadGltfGroup(terrainAssets.laReunion.reliefMap)
     .then(({ scene: model }) => {
       model.name = "LaReunionReliefMap";

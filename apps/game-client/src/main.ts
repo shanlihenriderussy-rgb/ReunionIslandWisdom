@@ -1,5 +1,4 @@
 import "./styles.css";
-import { GameApp } from "./game/GameApp";
 
 const root = document.querySelector<HTMLDivElement>("#app");
 
@@ -7,8 +6,13 @@ if (!root) {
   throw new Error("Missing #app root");
 }
 
-const game = new GameApp(root);
-game.start();
+void import("./game/GameApp").then(({ GameApp }) => {
+  const game = new GameApp(root);
+  game.start();
+}).catch((error: unknown) => {
+  console.error("RIW game runtime load failed", error);
+  root.textContent = "Impossible de charger le jeu. Recharge la page.";
+});
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {

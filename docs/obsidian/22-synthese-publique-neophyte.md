@@ -1,4 +1,298 @@
-## 2026-06-25 06:35 - Rapprochement visuel avec la cote ouest
+## 2026-06-26 11:22 - Interaction parler validee en ligne
+
+En clair :
+
+- Le bouton `E / Parler` fonctionne maintenant avec le serveur local actif.
+- Le jeu passe bien en statut `En ligne`.
+- Devant Tatie Snack, appuyer sur `E` ouvre le dialogue attendu.
+
+Impact :
+
+- La premiere boucle jouable est plus credible : connexion, personnage proche,
+  prompt d'action, dialogue.
+- Une incompatibilite technique entre le serveur Colyseus recent et le client
+  JavaScript actuel a ete absorbee cote client.
+
+Statut :
+
+- Typecheck OK. Lint OK.
+- Test navigateur Chrome headless OK.
+- Detail : [[iterations/2026-06-26-interaction-e-fallback]].
+
+## 2026-06-26 13:30 - Le jeu démarre maintenant sur le volcan
+
+En clair :
+
+- Avant, on commençait sur la plage de l'Ouest. Maintenant le jeu démarre vraiment sur le Piton de la Fournaise,
+  le volcan du sud-est (c'était prévu, mais le code démarrait encore à la plage).
+- Le panneau d'objectif affiche désormais des étapes liées au volcan : rejoindre le rebord du cratère,
+  observer le cône, puis repérer le Piton des Neiges.
+- Ces étapes se valident toutes seules quand on s'approche des bons endroits, sans personnage à qui parler.
+
+Impact pour le projet :
+
+- La première expérience du jeu correspond enfin à la décision prise (départ volcan).
+- Testé en direct : on apparaît bien sur le volcan, les deux premières étapes se cochent au départ.
+
+Statut :
+
+- Fait et vérifié dans le jeu ; quelques réglages restent (étapes un peu trop rapprochées, hauteur de départ à surveiller).
+- ⚠ Un autre assistant (Codex) travaillait en même temps sur le départ Ouest : il faudra choisir une seule direction.
+- Détail : [[04-decisions]] (ADR-013) et [[12-phase-1-level-design]].
+
+## 2026-06-26 12:10 - Interface : coins carres, ambiance plus tropicale
+
+En clair :
+
+- Tous les coins arrondis de l'interface du jeu (boutons, panneaux, barres, pastilles) ont ete redresses.
+- Avant : coins tres arrondis, parfois en pilule ou en rond, look « appli moderne ».
+- Maintenant : coins droits ou a peine adoucis (5 px maximum). Les petits points d'etat deviennent de mini carres.
+- L'idee : un style plus « grave / tampon », moins lisse, plus original et plus en accord avec l'univers tropical.
+
+Impact pour le projet :
+
+- L'interface a une signature visuelle plus marquee et moins generique, sans rien casser : couleurs, textes et disposition ne bougent pas.
+- Tout est pilote par un reglage central, donc facile a ajuster ou annuler.
+
+Statut :
+
+- Modification faite cote feuilles de style ; verification a l'ecran sous Windows a refaire.
+- Ajout : une fine texture « tissu/serigraphie » sur les panneaux sombres, pour casser l'effet
+  vitre lisse et renforcer le cote artisanal tropical. Discrete, sans gener la lecture du texte.
+- Mise a jour (verifiee dans le jeu) : texture rendue un peu plus visible, et panneaux rendus plus opaques
+  pour mieux lire le texte en plein soleil sur la plage. Lancement teste : tout s'affiche, plusieurs joueurs en ligne.
+- Detail : [[04-decisions]] (ADR-012) et [[23-design-system-hud]].
+
+## 2026-06-26 11:00 - Chasse aux bugs (tous types)
+
+En clair :
+
+- Passe complete a la recherche de bugs, du serveur au client.
+- Deux corrections concretes :
+  - L'image du jeu pouvait devenir noire si la fenetre etait redimensionnee a un
+    moment ou elle n'avait pas encore de taille (calcul d'affichage invalide). Corrige.
+  - Petit nettoyage interne sur l'effet de lave du volcan pour eviter une fuite
+    memoire si la scene est reconstruite.
+- Le reste a ete verifie et juge sain : protection contre la triche et les messages
+  malveillants cote serveur (limites d'envoi, distances, nettoyage des textes),
+  et aucune faille d'injection dans l'affichage du chat (texte affiche tel quel,
+  jamais interprete comme du code).
+
+Impact pour le projet :
+
+- Rendu plus robuste, base technique plus sure avant d'ajouter du gameplay.
+
+Statut :
+
+- 2 bugs corriges, audit sans autre alerte bloquante. Verification compilateur
+  (typecheck/lint/build) a relancer sous Windows.
+- Detail : [[iterations/2026-06-26-bug-sweep]].
+
+## 2026-06-26 09:22 - Decoupage du chargement du jeu
+
+En clair :
+
+- Le premier fichier JavaScript charge par la page est maintenant tres leger.
+- Le gros moteur du jeu est charge juste apres, dans un fichier separe.
+- Le message d'alerte Vite sur les gros fichiers ne bloque plus le build : on a mis un budget coherent avec un jeu 3D Three.js.
+
+Impact pour le projet :
+
+- La structure de chargement est plus propre pour une PWA et un programme installable.
+- Le poids total du jeu ne baisse pas encore ; c'est un chantier suivant.
+
+Statut :
+
+- Typecheck OK. Lint OK. Build OK.
+- Detail : [[iterations/2026-06-26-code-splitting-runtime]].
+
+## 2026-06-26 08:28 - Correction de la passe graphique Claude
+
+En clair :
+
+- L'ecran de depart indiquait Saint-Paul / Saint-Gilles, mais les objectifs parlaient encore du volcan Fournaise. C'est corrige.
+- Les objectifs affiches correspondent maintenant au parcours ouest : Tatie Snack, Car Jaune, ravine, point de vue Maido / Mafate.
+- L'inventaire de maquette reste cache en public et ne s'ouvre plus au clavier sans option de debug.
+- Les grandes traces noires sur le chemin ont ete supprimees en stabilisant le rendu du ruban de sentier.
+- Sur mobile, les messages sont remontes au-dessus des controles tactiles. Le joystick et le bouton d'action prennent moins de place.
+
+Impact pour le projet :
+
+- L'ecran raconte mieux ce que le joueur fait vraiment.
+- La passe graphique de Claude reste exploitable, mais corrigee avant d'empiler d'autres effets.
+
+Statut :
+
+- Typecheck OK. Lint OK. Build OK. Captures navigateur desktop/mobile OK.
+- Detail : [[iterations/2026-06-26-codex-correction-claude]].
+
+## 2026-06-26 07:20 - Reglage des fumerolles du volcan
+
+Resume public :
+
+- Sur le Piton de la Fournaise, le jeu affiche de petites colonnes de vapeur (les "fumerolles") qui sortent du sol, pour donner vie au volcan.
+- Probleme repere la veille : selon le tirage aleatoire, une fumerolle pouvait se placer trop pres des reperes de l'objectif (le cairn et le cone central), au risque de gener la lecture de la scene.
+- Correction du jour : on a ajoute une regle simple. Si une fumerolle tombe trop pres d'un repere, elle se decale automatiquement un peu sur le cote, sans changer le reste.
+
+Impact concret :
+
+- Le volcan reste lisible : la vapeur ne vient plus masquer les points importants a atteindre.
+- Avec le reglage actuel, rien ne bouge a l'ecran (les fumerolles etaient deja assez ecartees) ; la regle sert de filet de securite pour les reglages futurs.
+- En bonus, on a verifie que la vapeur ne fait plus de "halo" opaque devant les rochers.
+
+Statut :
+
+- Modification dans `apps/game-client/src/render/fournaise.ts`.
+- Verifications de calcul faites ; controle visuel a confirmer en jeu (`?mapDebug`).
+
+## 2026-06-26 05:18 - Vegetation cote ouest optimisee (performance)
+
+En clair :
+
+- Les palmiers et rochers de la cote ouest sont desormais affiches par "lots"
+  identiques plutot qu'un par un. Pour la carte graphique, c'est beaucoup moins
+  de travail a chaque image.
+- Concretement : plus de fluidite sur telephone, un rendu plus stable, et on peut
+  remettre de la densite de vegetation sans faire chuter les images par seconde.
+- Le placement, la taille et l'inclinaison de chaque plante restent exactement
+  comme avant : verifie au calcul, c'est identique au pixel pres.
+
+Impact pour le projet :
+
+- Base technique plus saine pour densifier la jungle de l'ouest sans ralentir.
+- A noter : ca n'allege pas encore le poids de telechargement du jeu (le fichier
+  programme). C'est un autre chantier, prevu juste apres.
+
+Statut :
+
+- Item P3 "instancing palmiers/rochers" applique. Verification Windows OK
+  (typecheck, lint, build). Prochaines etapes : mesure des performances, puis
+  decoupage du telechargement, et le filtre couleurs facon cinema seulement a la fin.
+- Detail : [[iterations/2026-06-26-instancing-vegetation]], decision [[04-decisions]] ADR-011.
+
+## 2026-06-26 04:51 - Toits patines + verification de la passe visuelle
+
+En clair :
+
+- Les toits des cases creoles et du snack ont maintenant un aspect "tole usee" :
+  le haut accroche la lumiere, le bas est plus sombre avec une pointe de rouille.
+  Plus realiste, sans aucune image importee (effet calcule a la volee).
+- En parallele, la passe graphique precedente (lagon bicolore, houle, interface
+  nettoyee, camera, volcan) a ete verifiee et corrigee : le jeu compile, tourne,
+  et l'objectif affiche pointe desormais vers Saint-Paul / Saint-Gilles (la zone
+  de depart reelle) au lieu du volcan.
+
+Impact pour le projet :
+
+- La cote ouest gagne en credibilite ; la base technique est confirmee "verte".
+
+Statut :
+
+- Item P2 "toits" applique. Le filtre de couleurs global facon cinema (LUT) est
+  reporte : il demanderait une couche technique lourde pour les telephones, on s'en
+  tient pour l'instant aux reglages de lumiere deja en place.
+- Detail : [[iterations/2026-06-26-toits-weathering]], plan [[25-graphismes-ameliorations]].
+
+## 2026-06-26 04:18 - Lagon bicolore et houle sur l'ecume
+
+En clair :
+
+- L'ocean n'est plus d'un seul bleu uni : turquoise lagon pres de la cote, bleu
+  profond au large. Le degrade donne tout de suite une impression de profondeur.
+- Les bandes d'ecume le long de la plage "respirent" maintenant : un leger
+  va-et-vient de vagues (montee/descente de 2 cm sur 4 secondes), decale d'une
+  bande a l'autre pour ne pas bouger en bloc.
+
+Impact pour le projet :
+
+- La cote ouest parait plus vivante et plus lisible sans ajouter le moindre objet.
+- Aucune image/texture importee : effet 100 % code, conforme a la regle "style maison".
+
+Statut :
+
+- Item P2 "eau / lagon" du plan applique. Verification technique (typecheck/lint)
+  et captures avant/apres a faire sous Windows.
+- Detail : [[iterations/2026-06-26-eau-lagon-houle]], plan [[25-graphismes-ameliorations]].
+
+## 2026-06-26 - Mise a jour des packages
+
+Resume public :
+
+- Les packages techniques du projet ont ete mis a jour.
+- Le moteur web passe notamment sur des versions plus recentes de Vite, Three.js, TypeScript, ESLint, Zod, Colyseus et Tauri CLI.
+- Le gestionnaire pnpm reste en version 10 pour eviter un blocage de securite lie a des paquets publies trop recemment.
+
+Impact pour le projet :
+
+- Le projet reste compatible avec les versions recentes de l'ecosysteme web/3D.
+- Les controles automatiques passent toujours apres update.
+- La dette principale reste la taille du paquet JavaScript.
+
+Statut :
+
+- Install OK. Typecheck OK. Lint OK. Build OK.
+## 2026-06-25 07:45 - Premieres retouches graphiques appliquees
+
+En clair :
+
+- On a commence a appliquer le plan d'ameliorations, en suivant l'ordre prevu.
+- Interface nettoyee : les fausses jauges de vie/energie, la mini-carte trompeuse,
+  la barre d'objets et la fiche d'objet sont masquees. L'ecran ne promet plus un
+  jeu plus avance qu'il ne l'est. (On peut tout reafficher avec une option cachee
+  pour les maquettes.)
+- Volcan plus vivant : une lueur de lave qui respire au fond du cratere, et les
+  panaches de fumee ne "bavent" plus devant les rochers.
+- Cone central pose sur un socle (il ne flotte plus), petit sommet clair ajoute
+  au cairn de depart pour mieux reperer l'objectif.
+- Camera abaissee facon maquette (vue plus immersive), couleurs un peu plus
+  franches, ombres plus douces.
+- Cote ouest : toits des cases en tons chauds, barque de peche peinte (coque rouge),
+  cordage sur le ponton ; jungle du Maido moins dense pour rester lisible ; troncs
+  d'arbres moins sombres.
+- Chargement allege : on ne charge plus en double le gros fichier de relief quand
+  le decoupage en morceaux fonctionne.
+
+Impact pour le projet :
+
+- Le jeu se lit mieux des le depart (volcan) et le long du sentier ouest.
+- Aucun nouvel objet importe : on respecte la regle "style maison, pas d'objets au hasard".
+
+Statut :
+
+- Lot P1 (interface, volcan, allegement) + une partie du P2 (camera, lumiere, cote ouest,
+  vegetation) appliques. Verification technique et captures avant/apres a faire sous Windows.
+- Detail : [[iterations/2026-06-25-graphismes-v1-p1-p2]], plan complet [[25-graphismes-ameliorations]].
+
+## 2026-06-25 07:00 - Plan d'ameliorations des graphismes
+
+En clair :
+
+- On a passe le jeu au crible pour lister tout ce qui peut etre rendu plus beau,
+  sans changer le style « Jour Tropical » ni ajouter d'objets au hasard.
+- La liste est rangee par priorite (P1 = a faire en premier, P3 = plus tard).
+
+Ce qui passe en premier (P1) :
+
+1. Nettoyer l'interface : on cache les jauges de vie/energie, la mini-carte et la
+   barre d'objets tant que ces systemes n'existent pas vraiment. Aujourd'hui elles
+   font croire a un jeu plus avance qu'il ne l'est : c'est juge bloquant.
+2. Donner vie au volcan : une lueur de lave au fond du cratere + reglage des
+   panaches de fumee pour qu'ils ne « bavent » plus devant les rochers.
+3. Alleger le chargement : ne plus charger en double le gros fichier de relief
+   quand le chargement par morceaux est actif (gain de fluidite, zero effet visuel).
+
+Ensuite (P2/P3) : camera plus basse facon maquette, couleurs plus chaudes pour les
+cases creoles, vagues d'ecume animees, plus de variete dans les palmiers, lumiere
+orange dramatique au volcan, et des outils pour comparer le rendu aux images de
+reference.
+
+Statut :
+
+- Liste figee comme document de reference : [[25-graphismes-ameliorations]].
+- Aucun changement de jeu pour l'instant : c'est un plan. Les retouches viendront
+  une par une, avec capture avant/apres a chaque fois.
+
+
 
 Resume public :
 
@@ -623,15 +917,14 @@ Resume public :
 - Le jeu se decoupe en deux morceaux a heberger separement :
   - le "client" = ce qui s'affiche dans le navigateur (le decor, l'interface) ; ce sont juste des fichiers a distribuer ;
   - le "serveur" = le programme toujours allume qui gere le monde partage et les joueurs connectes en temps reel.
-- Decision : le client ira sur **Cloudflare Pages** (rapide, gratuit, sans limite de trafic, parfait pour les fichiers 3D un peu lourds) et le serveur sur **Fly.io** (machine qui reste allumee en permanence, connexion temps reel, region de Johannesburg qui est la plus proche de La Reunion).
-- Pourquoi pas tout au meme endroit : un serveur de jeu temps reel a besoin de rester allume et de garder une connexion ouverte avec chaque joueur, ce que les hebergements "fichiers seuls" ne savent pas faire.
+- Decision : le client ira sur **Cloudflare Pages** et le serveur sur **Fly.io**.
+- Pourquoi pas tout au meme endroit : un serveur de jeu temps reel doit rester allume et garder une connexion ouverte avec chaque joueur.
 
 Impact pour le projet :
 
-- Tous les fichiers de configuration necessaires au deploiement ont ete prepares dans le projet (recette de fabrication du serveur, reglages Fly.io, adresse du serveur cote client).
-- Le serveur repond maintenant a une petite verification de sante ("/health") pour que l'hebergeur sache qu'il fonctionne.
-- Il reste a Shan a creer les comptes Cloudflare et Fly.io puis a lancer les commandes de mise en ligne (compte requis, ne peut pas etre fait a sa place).
-- Gratuit suffit pour les tests et demonstrations ; un vrai lancement avec beaucoup de joueurs demandera de passer le serveur en payant plus tard.
+- Les fichiers de configuration necessaires au deploiement ont ete prepares.
+- Le serveur repond a une verification de sante (`/health`).
+- Il reste a Shan a creer les comptes Cloudflare et Fly.io puis a lancer les commandes de mise en ligne.
 
 Statut :
 
@@ -784,3 +1077,59 @@ Statut :
 
 - Logique testee (6 cas sur 6 corrects). A revalider sous Windows.
 - Detail technique : [[iterations/2026-06-15-west-path-onpath-threshold]].
+
+## 2026-06-26 - Audit performance graphique
+
+En clair :
+
+- Le jeu a maintenant un mode de mesure cache (`?perfDebug`) pour compter le cout reel du rendu.
+- En vue de jeu normale cote ouest, la scene reste dans un budget correct : environ 128 appels de dessin et 195k triangles.
+- La vue carte/debug est le vrai point lourd : 246 appels de dessin et 476k triangles.
+
+Impact :
+
+- Les optimisations de vegetation faites juste avant vont dans le bon sens.
+- Le prochain gros gain doit viser la carte : moins de details visibles quand on regarde toute l'ile de haut.
+
+Statut :
+
+- Mesure faite avec captures desktop, mobile et carte.
+- Detail : [[iterations/2026-06-26-audit-perf-draw-calls]].
+
+## 2026-06-26 - Lancement du jeu simplifie
+
+En clair :
+
+- Le projet a maintenant des commandes simples pour lancer le jeu.
+- `corepack pnpm launch:web` lance le serveur local et le client web, puis ouvre le navigateur.
+- `corepack pnpm stop:web` ferme proprement les services lances.
+- `corepack pnpm launch:desktop` lance l'executable Windows.
+
+Impact :
+
+- Shan peut tester plus vite sans retenir les details Vite, Colyseus ou Tauri.
+- Si Tauri CLI est bloque par Windows Application Control, le build desktop repasse par Cargo et produit quand meme `riw.exe`.
+
+Statut :
+
+- Fichiers de lancement ajoutes.
+- Detail : [[iterations/2026-06-26-install-launch-files]].
+
+## 2026-06-26 - Interaction parler corrigee
+
+En clair :
+
+- Le bouton `E / Parler` fonctionne maintenant meme si le serveur local n'est pas connecte.
+- Quand le joueur est devant Tatie Snack, `E` ouvre tout de suite le dialogue.
+- Le bouton d'action mobile fait la meme chose.
+
+Impact :
+
+- La premiere action du jeu n'a plus l'air cassee.
+- Le serveur reste la source de verite pour les futures recompenses/progressions ; le correctif actuel sert au feedback de dialogue.
+
+Statut :
+
+- Test desktop touche `E` OK.
+- Test mobile bouton action OK.
+- Detail : [[iterations/2026-06-26-interaction-e-fallback]].

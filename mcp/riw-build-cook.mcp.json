@@ -13,7 +13,10 @@
         "corepack pnpm --filter @riw/game-client build",
         "corepack pnpm cook:web",
         "corepack pnpm package:web",
-        "corepack pnpm cook:desktop"
+        "corepack pnpm cook:desktop",
+        "corepack pnpm launch:web",
+        "corepack pnpm launch:desktop",
+        "corepack pnpm stop:web"
       ]
     },
     {
@@ -29,7 +32,9 @@
     { "id": "validate", "command": "corepack pnpm --filter @riw/game-client typecheck && corepack pnpm --filter @riw/game-client lint" },
     { "id": "cook-web", "command": "corepack pnpm cook:web" },
     { "id": "package-web", "command": "corepack pnpm package:web" },
-    { "id": "cook-desktop", "command": "corepack pnpm cook:desktop", "requires": ["rust", "tauri-cli"], "platform": "windows" }
+    { "id": "cook-desktop", "command": "corepack pnpm cook:desktop", "requires": ["rust"], "platform": "windows", "fallback": "cargo build --release si le binding natif Tauri JS est bloque par Windows Application Control" },
+    { "id": "launch-web", "command": "corepack pnpm launch:web", "platform": "windows" },
+    { "id": "launch-desktop", "command": "corepack pnpm launch:desktop", "platform": "windows" }
   ],
   "securityRules": [
     "Pas de secret cote client.",
@@ -41,6 +46,7 @@
     "webZip": "output/reunion-island-wisdom-web-<version>-<timestamp>.zip",
     "clientDist": "apps/game-client/dist",
     "publicManifest": "apps/game-client/public/manifest.webmanifest",
-    "desktopInstaller": "apps/game-client/src-tauri/target/release/bundle/{msi,nsis}/Reunion Island Wisdom_<version>_x64*.{msi,exe}"
+    "desktopInstaller": "apps/game-client/src-tauri/target/release/bundle/{msi,nsis}/Reunion Island Wisdom_<version>_x64*.{msi,exe}",
+    "desktopExe": "apps/game-client/src-tauri/target/release/riw.exe"
   }
 }

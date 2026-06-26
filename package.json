@@ -15,13 +15,18 @@
     "cook:web": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-web-release.ps1",
     "package:web": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-web-release.ps1 -SkipBuild",
     "release:web": "corepack pnpm --filter @riw/game-client typecheck && corepack pnpm --filter @riw/game-client lint && powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-web-release.ps1",
+    "launch:web": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/launch-game.ps1",
+    "launch:web:no-browser": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/launch-game.ps1 -NoBrowser",
+    "stop:web": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/stop-game.ps1",
+    "launch:desktop": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/launch-desktop.ps1",
+    "release:desktop": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-desktop-release.ps1",
     "desktop:dev": "corepack pnpm --filter @riw/game-client tauri:dev",
-    "cook:desktop": "corepack pnpm --filter @riw/game-client tauri:build"
+    "cook:desktop": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/build-desktop-release.ps1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.28.0",
-    "eslint": "^9.28.0",
-    "typescript": "^5.8.3",
-    "typescript-eslint": "^8.33.1"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.5.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.62.0"
   }
 }

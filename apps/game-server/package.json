@@ -11,15 +11,16 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@colyseus/ws-transport": "^0.16.5",
+    "@colyseus/ws-transport": "^0.17.13",
     "@riw/content": "workspace:*",
     "@riw/shared": "workspace:*",
-    "colyseus": "^0.16.4",
-    "tsx": "^4.19.4",
-    "zod": "^3.25.56"
+    "colyseus": "^0.17.10",
+    "express": "^5.2.1",
+    "tsx": "^4.22.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
-    "typescript": "^5.8.3"
+    "@types/node": "^26.0.1",
+    "typescript": "^6.0.3"
   }
 }

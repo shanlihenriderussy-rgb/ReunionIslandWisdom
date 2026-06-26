@@ -21,6 +21,26 @@ type TerrainCollisionData = {
 
 const seaLevel = -0.38;
 const beachY = 0.055;
+
+// FX eau animes (houle douce sur l'ecume). Pilotes chaque frame par GameApp via
+// updateWestWaterFx — pas de timer interne, pas de recompil shader.
+type WaterFx = { mesh: THREE.Mesh; baseY: number; baseOpacity: number; phase: number };
+const waterFx: WaterFx[] = [];
+const HOULE_PERIOD = 4; // s : periode de la houle
+const HOULE_AMPLITUDE = 0.02; // m : bob vertical de l'ecume
+
+// Appele chaque frame : fait respirer les bandes d'ecume (bob ±2 cm + battement d'opacite).
+export function updateWestWaterFx(elapsedSeconds: number): void {
+  for (const fx of waterFx) {
+    const wave = Math.cos((elapsedSeconds * Math.PI * 2) / HOULE_PERIOD + fx.phase);
+    fx.mesh.position.y = fx.baseY + wave * HOULE_AMPLITUDE;
+    const material = fx.mesh.material;
+    if (material instanceof THREE.MeshBasicMaterial) {
+      material.opacity = fx.baseOpacity * (0.82 + 0.18 * (wave * 0.5 + 0.5));
+    }
+  }
+}
+
 const westShoreMinZ = -18;
 const westShoreMaxZ = 24;
 const westShoreMaxX = -70;
@@ -253,7 +273,10 @@ function createSnackKiosk(terrain: TerrainCollisionData): THREE.Group {
   frontCounter.castShadow = true;
   frontCounter.receiveShadow = true;
 
-  const roofMesh = new THREE.Mesh(new THREE.ConeGeometry(1.28, 0.65, 4), roof);
+  // Matériau cloné : le toit reçoit le weathering (vertex colors), le panneau garde `roof` plat.
+  const roofWeathered = roof.clone();
+  const roofMesh = new THREE.Mesh(new THREE.ConeGeometry(1.28, 0.65, 4), roofWeathered);
+  weatherRoof(roofMesh.geometry, roofWeathered);
   roofMesh.position.y = 1.58;
   roofMesh.rotation.y = Math.PI / 4;
   roofMesh.scale.z = 0.78;
@@ -283,11 +306,12 @@ function createSnackKiosk(terrain: TerrainCollisionData): THREE.Group {
 function createCreoleVillage(terrain: TerrainCollisionData): THREE.Group {
   const group = new THREE.Group();
   group.name = "ScenicWest_CreoleVillage";
+  // Toits chauds usés (moodboard B1) : gradient tôle ondulée rouge/orange.
   const houses = [
-    { x: -81.2, z: 13.2, rot: -0.5, scale: 0.72, wall: 0xf3d6ab, roof: 0xc85a2a },
-    { x: -78.9, z: 11.2, rot: -0.38, scale: 0.62, wall: 0xbfe4dc, roof: 0xd86a33 },
-    { x: -76.6, z: 9.1, rot: -0.3, scale: 0.54, wall: 0xf5e6d0, roof: 0xbb4a28 },
-    { x: -74.2, z: 6.7, rot: -0.2, scale: 0.46, wall: 0xe9c78f, roof: 0xc0392b }
+    { x: -81.2, z: 13.2, rot: -0.5, scale: 0.72, wall: 0xf3d6ab, roof: 0xd4572f },
+    { x: -78.9, z: 11.2, rot: -0.38, scale: 0.62, wall: 0xbfe4dc, roof: 0xc0392b },
+    { x: -76.6, z: 9.1, rot: -0.3, scale: 0.54, wall: 0xf5e6d0, roof: 0xa13a1f },
+    { x: -74.2, z: 6.7, rot: -0.2, scale: 0.46, wall: 0xe9c78f, roof: 0x8e2a18 }
   ] as const;
 
   for (const house of houses) {
@@ -313,6 +337,7 @@ function createCreoleHouse(wallColor: number, roofColor: number): THREE.Group {
   body.receiveShadow = true;
 
   const roofMesh = new THREE.Mesh(new THREE.ConeGeometry(0.92, 0.54, 4), roof);
+  weatherRoof(roofMesh.geometry, roof); // matériau dédié à la maison -> sûr
   roofMesh.position.y = 0.98;
   roofMesh.rotation.y = Math.PI / 4;
   roofMesh.scale.z = 0.78;
@@ -363,6 +388,20 @@ function createWoodPier(): THREE.Group {
       group.add(post);
     }
   }
+
+  // Cordage tendu entre les pieux extremes (détail "ponton de pêche", casse la symétrie).
+  const ropeMaterial = new THREE.LineBasicMaterial({ color: 0xf3ece0 });
+  const ropeY = -0.06;
+  const ropeGeometry = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-0.24, ropeY, 0.12),
+    new THREE.Vector3(-0.24, ropeY - 0.04, -0.72),
+    new THREE.Vector3(0.24, ropeY, 0.12),
+    new THREE.Vector3(0.24, ropeY - 0.04, -0.72)
+  ]);
+  const ropes = new THREE.LineSegments(ropeGeometry, ropeMaterial);
+  ropes.name = "ScenicWest_PierRope";
+  group.add(ropes);
+
   return group;
 }
 
@@ -372,8 +411,9 @@ function createFishingBoat(): THREE.Group {
   group.position.set(-90.6, seaLevel + 0.2, 17.4);
   group.rotation.y = 0.35;
 
-  const hullMaterial = new THREE.MeshStandardMaterial({ color: 0xb85d35, roughness: 0.82, metalness: 0 });
-  const trimMaterial = new THREE.MeshStandardMaterial({ color: 0xf2c66d, roughness: 0.7, metalness: 0 });
+  // Barque de pêche peinte (moodboard B1) : coque rouge + liston vert, plus locale qu'un jaune uni.
+  const hullMaterial = new THREE.MeshStandardMaterial({ color: 0xb5402b, roughness: 0.82, metalness: 0 });
+  const trimMaterial = new THREE.MeshStandardMaterial({ color: 0x2e8b6e, roughness: 0.7, metalness: 0 });
 
   const hull = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.34, 0.46), hullMaterial);
   hull.scale.z = 0.72;
@@ -460,10 +500,18 @@ function createFoamBands(): THREE.Group {
     ]
   ] as const;
 
-  for (const band of bands) {
+  // Reset : evite d'empiler les FX si le decor est reconstruit.
+  waterFx.length = 0;
+  for (let i = 0; i < bands.length; i += 1) {
+    const band = bands[i];
+    if (!band) {
+      continue;
+    }
     const mesh = createFlatRibbon(band, 0.42, seaLevel + 0.06, material.clone());
     mesh.name = "ScenicWest_FoamBand";
     mesh.renderOrder = 2;
+    // Phase decalee par bande : les vagues ne montent/descendent pas en bloc.
+    waterFx.push({ mesh, baseY: mesh.position.y, baseOpacity: 0.72, phase: i * 1.7 });
     group.add(mesh);
   }
 
@@ -561,6 +609,37 @@ function createFlatRibbon(
 function sampleSmoothPoints(points: readonly Point2[], y: number): THREE.Vector3[] {
   const curve = new THREE.CatmullRomCurve3(points.map((point) => new THREE.Vector3(point.x, y, point.z)));
   return curve.getPoints(Math.max(12, points.length * 5));
+}
+
+// Toits "tôle ondulée usée" (moodboard B1) : gradient vertical en vertex colors
+// (faîte éclairci par le soleil, avant-toit assombri + légère rouille). Multiplie
+// la teinte du matériau, donc la couleur de base est conservée. Pur runtime, aucun asset.
+function weatherRoof(geometry: THREE.BufferGeometry, material: THREE.MeshStandardMaterial): void {
+  const position = geometry.getAttribute("position");
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i < position.count; i += 1) {
+    const y = position.getY(i);
+    if (y < minY) {
+      minY = y;
+    }
+    if (y > maxY) {
+      maxY = y;
+    }
+  }
+  const span = Math.max(1e-4, maxY - minY);
+  const colors = new Float32Array(position.count * 3);
+  for (let i = 0; i < position.count; i += 1) {
+    const t = (position.getY(i) - minY) / span; // 0 = avant-toit, 1 = faîte
+    const bright = 0.72 + t * 0.33; // 0.72 -> 1.05
+    const warm = (1 - t) * 0.06; // rouille légère vers le bas
+    colors[i * 3] = Math.min(1.1, bright + warm);
+    colors[i * 3 + 1] = bright;
+    colors[i * 3 + 2] = bright;
+  }
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  material.vertexColors = true;
+  material.needsUpdate = true;
 }
 
 function sampleHeight(terrain: TerrainCollisionData, x: number, z: number): number {

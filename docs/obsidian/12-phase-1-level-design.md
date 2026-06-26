@@ -37,6 +37,15 @@ Dette / suite Fournaise :
 - Habillage basalte/scories + signal fumée : décision DA requise avant tout asset ([[09-direction-artistique]]).
 - Vérifier la praticabilité des pentes du cône en `?mapDebug` et au spawn.
 
+Mise a jour 2026-06-26 (départ Fournaise ACTIF en code) :
+
+- Le spawn est réellement basculé sur la Fournaise (serveur + client), cf. [[04-decisions]] ADR-013.
+- L'objectif HUD est désormais celui de la Fournaise (rebord Dolomieu → Enclos/cône → repère Piton des Neiges)
+  et **auto-progresse selon la position du joueur** (plus de dépendance aux PNJ non spawnés).
+- Validé en live : spawn sur le volcan, bandeau « Piton de la Fournaise », étapes 1+2 cochées au spawn.
+- Dette : étapes 1+2 trop proches (repères < 3 m du spawn) ; spawn `snapToGround` avant collision async à surveiller.
+- ⚠ Coordination : un agent Codex travaillait en parallèle dans la direction inverse (garder départ Ouest). À arbitrer.
+
 ## Blockout Saint-Paul / Saint-Gilles V1
 
 Mise a jour 2026-06-06 09:31 +04:00 :

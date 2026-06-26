@@ -154,9 +154,13 @@
      3. SURFACES HUD
      Panneaux sombres (verre basalte) + cartouches bois.
      ---------------------------------------------------------- */
-  --hud-panel:        rgb(26 25 23 / 82%);   /* verre basalte */
+  --hud-panel:        rgb(24 22 20 / 90%);   /* basalte plein — lisibilité plein soleil */
   --hud-panel-solid:  #1C1917;
-  --hud-panel-raise:  rgb(50 45 41 / 86%);   /* surface surélevée */
+  --hud-panel-raise:  rgb(50 45 41 / 90%);   /* surface surélevée */
+  /* Trame sérigraphie / tapa — texture artisanale tropicale sur panneaux basalte */
+  --hud-weave:
+    repeating-linear-gradient(45deg, rgb(247 243 232 / 8%) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(-45deg, rgb(20 17 15 / 22%) 0 1px, transparent 1px 5px);
   --hud-ink:          #F7F3E8;               /* texte clair principal */
   --hud-ink-soft:     rgb(247 243 232 / 72%);
   --hud-ink-faint:    rgb(247 243 232 / 45%);
@@ -219,15 +223,18 @@
   --touch-min:    44px;   /* cible tactile minimale */
 
   /* ----------------------------------------------------------
-     6. RAYONS — généreux, arrondis
+     6. RAYONS — coins nets / carrés (« bois gravé tropical »)
+     Direction : zéro à 5 px max. Pas de pilule, pas de rond.
+     Lecture tampon/tiki/affiche sérigraphiée, moins « app moderne ».
      ---------------------------------------------------------- */
-  --r-sm:   8px;
-  --r-md:   12px;
-  --r-lg:   18px;
-  --r-xl:   26px;
-  --r-2xl:  34px;
-  --r-pill: 999px;
-  --r-disc: 50%;
+  --r-sm:   0;      /* puces, slots : coin franc */
+  --r-md:   3px;
+  --r-lg:   5px;
+  --r-xl:   5px;
+  --r-2xl:  5px;
+  --r-pill: 5px;    /* ex-pilule → rectangle à coin doux */
+  --r-disc: 5px;    /* ex-rond → carré à coin doux */
+  --r-dot:  2px;    /* points / indicateurs : mini carré */
 
   /* ----------------------------------------------------------
      7. CONTOURS — épaisseur (intensité cartoon ~80%)

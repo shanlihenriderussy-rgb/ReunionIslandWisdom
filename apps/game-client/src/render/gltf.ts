@@ -117,6 +117,88 @@ export function attachGltf(parent: THREE.Group, url: string, options: ModelOptio
     });
 }
 
+// Specification d'une instance pour buildGltfInstances : placement monde du prop
+// (le scale est derive de targetHeight, comme un prop normal).
+export type GltfInstanceSpec = {
+  position: THREE.Vector3;
+  quaternion: THREE.Quaternion;
+  targetHeight: number;
+  rotationY: number;
+};
+
+const UNIT_SCALE = new THREE.Vector3(1, 1, 1);
+
+// Construit des InstancedMesh (1 par mesh unique du GLB) pour poser N copies d'un
+// meme prop en un minimum de draw calls. Reutilise normalizeModel (scale/centrage/
+// grounding/rotation) en le rejouant sur un template unique : aucune duplication
+// des maths de placement. Cf. P3 perf ouest, ADR draw calls.
+export async function buildGltfInstances(
+  url: string,
+  specs: readonly GltfInstanceSpec[],
+  options: { materialMode?: "westVegetation"; castShadow?: boolean; receiveShadow?: boolean } = {}
+): Promise<THREE.InstancedMesh[]> {
+  if (specs.length === 0) {
+    return [];
+  }
+
+  const { scene: template } = await loadGltfGroup(url);
+  applyMaterialOptions(template, options);
+
+  // Ordre de parcours stable : on relit les memes feuilles a chaque instance.
+  const leaves: THREE.Mesh[] = [];
+  template.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      leaves.push(child);
+    }
+  });
+  if (leaves.length === 0) {
+    return [];
+  }
+
+  const perLeaf = leaves.map(() => [] as THREE.Matrix4[]);
+  const parentMatrix = new THREE.Matrix4();
+
+  for (const spec of specs) {
+    // Reset scale avant normalize : sinon preBox inclut le scale de l'iteration precedente.
+    template.scale.setScalar(1);
+    normalizeModel(template, { targetHeight: spec.targetHeight, rotationY: spec.rotationY });
+    template.updateMatrixWorld(true);
+    parentMatrix.compose(spec.position, spec.quaternion, UNIT_SCALE);
+
+    for (let i = 0; i < leaves.length; i += 1) {
+      const leaf = leaves[i];
+      const bucket = perLeaf[i];
+      if (!leaf || !bucket) {
+        continue;
+      }
+      bucket.push(new THREE.Matrix4().multiplyMatrices(parentMatrix, leaf.matrixWorld));
+    }
+  }
+
+  const result: THREE.InstancedMesh[] = [];
+  for (let i = 0; i < leaves.length; i += 1) {
+    const leaf = leaves[i];
+    const matrices = perLeaf[i];
+    if (!leaf || !matrices || matrices.length === 0) {
+      continue;
+    }
+    const instanced = new THREE.InstancedMesh(leaf.geometry, leaf.material, matrices.length);
+    for (let k = 0; k < matrices.length; k += 1) {
+      const matrix = matrices[k];
+      if (matrix) {
+        instanced.setMatrixAt(k, matrix);
+      }
+    }
+    instanced.instanceMatrix.needsUpdate = true;
+    instanced.castShadow = options.castShadow ?? true;
+    instanced.receiveShadow = options.receiveShadow ?? true;
+    instanced.name = `${leaf.name || "leaf"}_instanced`;
+    instanced.computeBoundingSphere(); // bornes incluant les instances -> culling correct
+    result.push(instanced);
+  }
+  return result;
+}
+
 export function addGltfProp(
   scene: THREE.Scene,
   url: string,
@@ -230,8 +312,11 @@ function tuneWestVegetationMaterial(material: THREE.Material): THREE.Material {
 
   if (tuned instanceof THREE.MeshStandardMaterial || tuned instanceof THREE.MeshBasicMaterial) {
     const maxChannel = Math.max(tuned.color.r, tuned.color.g, tuned.color.b);
-    if (maxChannel < 0.12) {
-      tuned.color.setHex(0x1f3f25);
+    // Seuil "sombre" remonte 0.12 -> 0.18 : recupere troncs/branches quasi-noirs.
+    if (maxChannel < 0.18) {
+      // Brunâtre (tronc) -> bois chaud ; sinon -> feuillage sombre lisible.
+      const brownish = tuned.color.r >= tuned.color.b;
+      tuned.color.setHex(brownish ? 0x4a3526 : 0x274d2e);
     } else if (tuned.color.g >= tuned.color.r && tuned.color.g >= tuned.color.b) {
       tuned.color.lerp(new THREE.Color(0x67a85a), 0.22);
     }
@@ -240,8 +325,8 @@ function tuneWestVegetationMaterial(material: THREE.Material): THREE.Material {
   if (tuned instanceof THREE.MeshStandardMaterial) {
     tuned.metalness = 0;
     tuned.roughness = Math.max(tuned.roughness, 0.82);
-    tuned.emissive.setHex(0x0d2112);
-    tuned.emissiveIntensity = Math.max(tuned.emissiveIntensity, 0.045);
+    tuned.emissive.setHex(0x152a17);
+    tuned.emissiveIntensity = Math.max(tuned.emissiveIntensity, 0.06);
   }
 
   tuned.needsUpdate = true;

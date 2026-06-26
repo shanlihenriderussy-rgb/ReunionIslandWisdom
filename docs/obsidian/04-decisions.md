@@ -298,3 +298,157 @@ Consequence :
 - Le `target/` Rust est ignore (gitignore src-tauri) ; ne pas committer les binaires.
 - Signature de code Windows non couverte (SmartScreen affichera un avertissement) : decision signature reportee.
 - A faire ensuite : sortir le GLB 18 Mo du bundle (poids installeur), tester WebView2 au premier lancement.
+
+Update 2026-06-26 :
+
+- `corepack pnpm cook:desktop` pointe maintenant vers `tools/build-desktop-release.ps1`.
+- Si le binding natif `@tauri-apps/cli-win32-x64-msvc` est bloque par Windows Application Control, le script bascule sur `cargo build --release`.
+- Ce fallback produit `apps/game-client/src-tauri/target/release/riw.exe`.
+- Limite : MSI/NSIS ne sont regeneres que si Tauri CLI complet passe.
+
+## ADR-011 - Perf rendu Ouest : InstancedMesh + ordre des chantiers perf
+
+Date : 2026-06-26
+Statut : accepte (decision explicite Shan), instancing implemente, validation runtime sous Windows a faire.
+
+Decision :
+
+- Vegetation Ouest (palmiers/rochers) rendue en `InstancedMesh` : 1 GLB -> N instances,
+  regroupees par URL, au lieu de N props = N sous-arbres = N draw calls.
+- Ordre acte des chantiers perf :
+  1. Instancing palmiers/rochers Ouest (ce ADR).
+  2. Audit perf draw calls.
+  3. Code-splitting bundle (Vite/Rolldown ; lazy-load Rapier/Colyseus/Tauri non concernes runtime ; separer `mapDebug` du runtime public).
+  4. LUT color grading : seulement en polish DA, apres stabilisation camera + biomes + materiaux.
+
+Pourquoi :
+
+- Shan precise : l'instancing corrige FPS mobile, draw calls, densite palmiers/rochers,
+  stabilite rendu Ouest. Il NE corrige PAS le warning `bundle > 500 kB` (chantier 3 distinct).
+- LUT reportee : trop tot risquerait de masquer les vrais problemes de lumiere, contraste
+  et lisibilite terrain. A traiter en dernier (polish), pas maintenant.
+
+Implementation :
+
+- `render/gltf.ts` : `buildGltfInstances(url, specs, options)` — charge le GLB une fois,
+  applique `materialMode`, rejoue `normalizeModel` sur un template unique pour calculer
+  les matrices par feuille, retourne 1 `InstancedMesh` par mesh unique. `computeBoundingSphere`
+  pour un culling correct. Aucune duplication des maths de placement.
+- `render/westVegetation.ts` : candidats acceptes regroupes par URL (`specsByUrl`),
+  `instanceSpecFor` remplace `createProp`. Colliders inchanges (donnees, pas de draw call).
+
+Validation (sanity three reel, sandbox) :
+
+- Position monde instance vs ancien prop : delta 1.3e-15 (identique).
+- Reset `scale=1` entre instances : scales `[1.5, 0.75, 3.0]` == modeles neufs (pas de derive).
+- typecheck/lint/build/FPS reels : a relancer sous Windows. Cf. [[iterations/2026-06-26-instancing-vegetation]].
+
+Consequence :
+
+- Moins de draw calls cote Ouest ; materiaux/geometries partages entre instances.
+- Limite : pas d'animation par-instance (vegetation statique, OK). Si besoin futur de
+  vent par-prop, prevoir shader d'instance ou retour cible a des meshes individuels.
+
+## ADR-012 - HUD : rayons carres (0-5 px), direction « bois grave tropical »
+
+Date : 2026-06-26
+Statut : accepte (demande explicite Shan), implemente CSS, validation runtime sous Windows a faire.
+
+Decision :
+
+- Tous les rayons de l'UI HUD passent en coins nets : 0 a 5 px max. Plus de pilule (999px), plus de rond (50%).
+- Direction tonale : moins « app moderne lisse », plus tampon/tiki/affiche serigraphiee, lecture bois grave tropical.
+- Geometrie pilotee par tokens centraux dans `design-tokens.css` (et copie `docs/design-system/hud/tokens.css`).
+
+Pourquoi :
+
+- demande explicite de Shan : rectangulaire, rayon 0 ou 5 max, ton plus tropical / moins moderne / plus original ;
+- le HUD actuel etait tres arrondi (r-lg 18, r-xl 26, pilule, disques) = signature trop generique « app » ;
+- carrer les coins + garder contours epais et ombres « lip » = lecture artisanale (bois grave / tampon), coherente avec la DA tropicale.
+
+Implementation :
+
+- `apps/game-client/src/design-tokens.css` section 6 RAYONS :
+  `--r-sm:0 / --r-md:3 / --r-lg:5 / --r-xl:5 / --r-2xl:5 / --r-pill:5 / --r-disc:5` + nouveau `--r-dot:2` (points/indicateurs).
+- `apps/game-client/src/styles.css` et `apps/game-client/src/components.css` : remplacement des rayons en dur hors-cible
+  (`50%`, `999px`, `6px`, `8px`, coin asymetrique chat `... 4px`) par les tokens ≤ 5 ou `--r-dot`.
+- Copies design-system synchronisees : `docs/design-system/hud/tokens.css` + `docs/design-system/hud/components.css`.
+- Aucun changement de couleur, police, layout, contour ou ombre : seul le rayon bouge.
+
+Verification :
+
+- grep de controle : zero `border-radius` > 5 px, zero `50%`, zero `999px` dans les CSS (src + docs) ;
+- equilibre des accolades CSS OK ;
+- typecheck/lint/build client + capture `?mapDebug` : a relancer sous Windows.
+
+Consequence :
+
+- HUD plus blocky / grave, moins « moderne » ; pastilles d'etat et points deviennent de petits carres (2 px) ;
+- minimap, avatar, boutons ronds, joystick, bouton action : carres a coin doux (5 px) — ces composants restent non actifs tant que le gameplay ne les porte pas ;
+- direction reversible (tout passe par les tokens). Prochain levier tonal possible si Shan valide : durcir le contour ou ajouter une trame bois/serigraphie sur les panneaux.
+- Detail : [[23-design-system-hud]].
+
+Update 2026-06-26 (levier tonal applique) :
+
+- Ajout d'une trame serigraphie / tapa sur le primitif panneau basalte : token `--hud-weave`
+  (double `repeating-linear-gradient` croise, faible opacite) pose en couche de fond de `.riw-panel`
+  via `background: var(--hud-weave), var(--hud-panel)`.
+- Touche les panneaux basalte live (carte joueur, objectif, quete, info). Les panneaux bois (`.riw-wood`,
+  dialogue/inventaire) gardent leur grain existant.
+- Behind-content (couche `background`, pas de pseudo-element) : zero impact lisibilite/layout, `backdrop-filter` conserve.
+- Reversible : retirer `var(--hud-weave)` du background ou vider le token.
+
+Update 2026-06-26 (trame v2 + lisibilite plein soleil) :
+
+- Trame montee d'un cran : opacites 4%/12% -> 8%/22%, pas 6px -> 5px (plus visible sans bruit).
+- Panneaux basalte solidifies pour la lecture plein soleil : `--hud-panel` 82% -> 90% (`rgb(24 22 20 / 90%)`),
+  `--hud-panel-raise` 86% -> 90%. Effet « verre » reduit = plus carved, plus lisible sur scene claire (plage Ouest).
+- Verifie en live (`pnpm dev`, localhost:5173) : panneau objectif nettement plus lisible, coins carres confirmes, multijoueur OK.
+- Filet de securite : `typecheck` + `lint` client = verts (CSS only, aucune regression TS/ESLint).
+
+## ADR-013 - Depart Fournaise active + objectif auto-progressif par position
+
+Date : 2026-06-26
+Statut : accepte (cadrage explicite Shan), implemente, valide en live (`pnpm dev`).
+
+Contexte :
+
+- ADR-008 declarait la Fournaise zone de depart, mais le code spawnait encore a l'Ouest :
+  serveur `startZone = saint-paul-saint-gilles`, et client `cameraPivot` initialise sur
+  `WEST_BLOCKOUT_SPAWN`. L'objectif HUD etait west-code et inerte (declenche par PNJ non spawnes).
+
+Decision (cadrage Shan) :
+
+- Depart : basculer reellement sur la Fournaise.
+- Habillage : procedural basalte/scories/fumee (deja present dans `render/fournaise.ts`) — DA actee.
+- Boucle : objectif observation auto-progressif par position, sans PNJ.
+
+Implementation :
+
+- Serveur `ReunionWorldRoom.ts` : `startZone` -> `piton-de-la-fournaise`, `activeEvent` -> `eveil-fournaise`.
+- `render/fournaise.ts` : export `FOURNAISE_SPAWN` (= zone content) + `FOURNAISE_OBJECTIVE_POINTS`
+  (rebord 65.9/-35, cone 65.9/-37, repere PdN 63/-33) en source unique.
+- `GameApp.ts` : spawn local sur `FOURNAISE_SPAWN` (au lieu de WEST), label zone par defaut Fournaise,
+  nouvelle methode `updateFournaiseObjective()` appelee chaque frame : proximite joueur -> `hud.setObjectiveStage`.
+  `WEST_BLOCKOUT_SPAWN` conserve : encore utilise par la camera map-debug (L262-264).
+- `ui/hud.ts` : 3 etapes Fournaise (rebord Dolomieu -> Enclos/cone -> repere Piton des Neiges),
+  notifications + titre quete (`Eveil de la Fournaise`) + corps quete reecrits, expose `setObjectiveStage` sur le controller.
+  `setObjectiveStage` reste monotone (pas de regression d'etat).
+
+Validation :
+
+- Live : spawn sur le volcan confirme, bandeau « Piton de la Fournaise », etapes 1+2 auto-cochees au spawn
+  (rebord = spawn, cone a ~2 m), etape 3 a la marche vers le repere. Multijoueur OK.
+- `typecheck` client + racine (assets/content/shared/server/client) = verts. `lint` client = vert.
+
+Dette / suite :
+
+- Spawn (65.9, 9, -35) : `snapToGround` est applique avant le chargement async de la collision. A surveiller
+  (cf. meme classe de bug que le spawn Ouest sous l'eau). Au test live le rendu est sain, mais valider au reload a froid.
+- Etapes 1+2 quasi instantanees (reperes a < 3 m du spawn) : si on veut une vraie traversee, espacer les reperes.
+- Camera map-debug focalise encore l'Ouest (`WEST_BLOCKOUT_SPAWN`) : a recentrer sur le joueur plus tard.
+- Detail level design : [[12-phase-1-level-design]].
+
+> ATTENTION COORDINATION (2026-06-26) : un agent Codex editait le repo en parallele dans la direction
+> INVERSE (garder le depart Ouest, corriger le spawn Ouest sous l'eau, reajuster l'objectif Tatie).
+> Risque de clobber mutuel sur `ReunionWorldRoom.ts`, `GameApp.ts`, `hud.ts`. Choisir UNE direction avant de continuer.

@@ -23,7 +23,7 @@ type PlayerRuntimeState = PlayerSnapshotDto;
 const maxChatEntries = 8;
 const chatCooldownMs = 900;
 const interactionCooldownMs = 500;
-const startZone = zones.find((zone) => zone.id === "saint-paul-saint-gilles") ?? zones[0];
+const startZone = zones.find((zone) => zone.id === "piton-de-la-fournaise") ?? zones[0];
 
 export class ReunionWorldRoom extends Room {
   maxClients = 50;
@@ -32,7 +32,7 @@ export class ReunionWorldRoom extends Room {
   private readonly lastChatAt = new Map<string, number>();
   private readonly lastInteractionAt = new Map<string, number>();
   private readonly chat: ChatEntryDto[] = [];
-  private activeEvent = "parcours-ouest";
+  private activeEvent = "eveil-fournaise";
 
   onCreate(): void {
     this.setSimulationInterval((deltaTime) => this.update(deltaTime), 1000 / serverTickRate);

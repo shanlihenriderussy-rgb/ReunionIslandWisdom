@@ -9,6 +9,8 @@ import { configureWorld } from "../render/world";
 import { getBiomeAtPosition } from "../world/biomes";
 import { WEST_BLOCKOUT_SPAWN } from "../world/westBlockout";
 import { createChunkStreamer, type ChunkStreamer } from "./ChunkStreamer";
+import { updateFournaiseFx } from "../render/fournaise";
+import { updateWestWaterFx } from "../render/westScenic";
 import {
   addNpcViews,
   findNearestNpc,
@@ -24,6 +26,31 @@ import {
   updatePlayerWalkAnimation,
   type RemotePlayerView
 } from "../render/players";
+
+type PerfSnapshot = {
+  fps: number;
+  frameMs: number;
+  render: {
+    calls: number;
+    triangles: number;
+    points: number;
+    lines: number;
+  };
+  memory: {
+    geometries: number;
+    textures: number;
+  };
+  programs: number | null;
+  sceneChildren: number;
+  mapView: boolean;
+  timestamp: number;
+};
+
+declare global {
+  interface Window {
+    __RIW_PERF__?: PerfSnapshot;
+  }
+}
 
 export class GameApp {
   private readonly shell: HTMLDivElement;
@@ -41,14 +68,18 @@ export class GameApp {
   private readonly npcViews: NpcView[] = [];
   private readonly lastLocalPlayerPosition = new THREE.Vector3();
   private readonly chunkStreamer: ChunkStreamer = createChunkStreamer(this.scene, { radius: 1, maxConcurrent: 2 });
+  private readonly perfDebug = new URLSearchParams(window.location.search).has("perfDebug");
   private localPlayerId: string | null = null;
   private sequence = 0;
   private animationFrame = 0;
   private cameraYaw = 0;
-  private activeZoneLabel = "Piton de la Fournaise";
+  private activeZoneLabel = "Saint-Paul / Saint-Gilles";
   private fpsAccum = 0;
   private fpsFrames = 0;
   private fpsValue = 0;
+  private perfLastNow = performance.now();
+  private perfFrameMs = 0;
+  private perfFps = 0;
 
   constructor(root: HTMLDivElement) {
     this.shell = document.createElement("div");
@@ -59,8 +90,11 @@ export class GameApp {
     this.renderer.setClearColor(0x87ceeb); // Ciel tropical — voir DA 09-direction-artistique
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.18;
+    // Couleurs plus franches facon maquette "Jour Tropical" (exposure releve 1.18 -> 1.28).
+    this.renderer.toneMappingExposure = 1.28;
     this.renderer.shadowMap.enabled = true;
+    // Ombres douces (cartoon) au lieu du shadow map dur par defaut.
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.hud = createHud(this.network, this.input);
 
@@ -83,6 +117,11 @@ export class GameApp {
   private readonly resize = (): void => {
     const width = this.shell.clientWidth;
     const height = this.shell.clientHeight;
+    // Conteneur pas encore mis en page / onglet masque : eviter aspect NaN/Infinity
+    // (matrice de projection corrompue, rendu noir jusqu'au prochain resize).
+    if (width <= 0 || height <= 0) {
+      return;
+    }
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false);
@@ -105,6 +144,7 @@ export class GameApp {
     const delta = Math.min(this.clock.getDelta(), 0.05);
     this.update(delta);
     this.renderer.render(this.scene, this.camera);
+    this.updatePerfProbe();
     this.animationFrame = window.requestAnimationFrame(this.loop);
   };
 
@@ -145,6 +185,8 @@ export class GameApp {
     updateNpcIdle(this.npcViews, delta, this.clock.elapsedTime);
     updateNpcMarkers(this.npcViews, this.clock.elapsedTime);
     this.chunkStreamer.update(this.cameraPivot.position, { mapView: this.hud.isMapView() });
+    updateFournaiseFx(this.clock.elapsedTime);
+    updateWestWaterFx(this.clock.elapsedTime);
     this.updateActiveBiome();
     this.hud.update(snapshot);
     this.updateDebugOverlay(delta);
@@ -154,6 +196,38 @@ export class GameApp {
     const biome = getBiomeAtPosition(this.cameraPivot.position);
     this.activeZoneLabel = biome.label;
     this.hud.setZone(biome.label);
+  }
+
+  private updatePerfProbe(): void {
+    if (!this.perfDebug) {
+      return;
+    }
+
+    const now = performance.now();
+    const frameMs = Math.max(0.001, now - this.perfLastNow);
+    this.perfLastNow = now;
+    this.perfFrameMs = this.perfFrameMs === 0 ? frameMs : THREE.MathUtils.lerp(this.perfFrameMs, frameMs, 0.12);
+    this.perfFps = 1000 / this.perfFrameMs;
+
+    const info = this.renderer.info;
+    window.__RIW_PERF__ = {
+      fps: Number(this.perfFps.toFixed(1)),
+      frameMs: Number(this.perfFrameMs.toFixed(2)),
+      render: {
+        calls: info.render.calls,
+        triangles: info.render.triangles,
+        points: info.render.points,
+        lines: info.render.lines
+      },
+      memory: {
+        geometries: info.memory.geometries,
+        textures: info.memory.textures
+      },
+      programs: info.programs?.length ?? null,
+      sceneChildren: this.scene.children.length,
+      mapView: this.hud.isMapView(),
+      timestamp: Math.round(now)
+    };
   }
 
   // Overlay debug (fps, zone, position) — visible uniquement en vue carte.
@@ -198,6 +272,11 @@ export class GameApp {
     this.hud.setInteractPrompt(nearest?.name ?? null);
     updateNpcHighlight(this.npcViews, nearest?.id ?? null);
     if (this.input.consumeInteractPressed() && nearest) {
+      this.network.openLocalDialogue({
+        npcId: nearest.id,
+        npcName: nearest.name,
+        line: nearest.line
+      });
       this.network.sendInteract(nearest.id);
     }
   }

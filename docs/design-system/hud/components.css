@@ -9,7 +9,7 @@
 
 .riw-panel {
   position: relative;
-  background: var(--hud-panel);
+  background: var(--hud-weave), var(--hud-panel);
   border: var(--bd-2) solid var(--contour);
   border-radius: var(--r-lg);
   box-shadow: var(--sh-pop);
@@ -192,7 +192,7 @@
 .riw-step__box {
   flex: none; width: 18px; height: 18px; margin-top: 1px;
   border: var(--bd-2) solid var(--hud-ink-soft);
-  border-radius: 6px; background: transparent;
+  border-radius: var(--r-md); background: transparent;
   display: grid; place-items: center;
 }
 .riw-step__box svg { width: 12px; height: 12px; opacity: 0; transition: opacity var(--dur-fast); }
@@ -305,7 +305,7 @@
 .riw-answer:active, .riw-answer.is-active { transform: translateY(2px); box-shadow: 0 1px 0 var(--wood-edge); }
 .riw-answer .riw-key {
   display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 4px;
-  background: var(--wood-edge); color: var(--wood-light); border-radius: 6px; font-size: var(--t-12);
+  background: var(--wood-edge); color: var(--wood-light); border-radius: var(--r-sm); font-size: var(--t-12);
 }
 
 /* ---------- PROMPT D'INTERACTION ---------- */
@@ -322,7 +322,7 @@
   display: grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px;
   font-family: var(--font-display); font-size: var(--t-14); color: var(--basalt-900);
   background: var(--color-cta); border: var(--bd-2) solid var(--contour);
-  border-radius: 8px; box-shadow: 0 2px 0 var(--sun-700);
+  border-radius: var(--r-lg); box-shadow: 0 2px 0 var(--sun-700);
 }
 @keyframes riw-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 @media (prefers-reduced-motion: reduce) { .riw-prompt { animation: none; } }
@@ -334,7 +334,7 @@
   align-self: flex-start; max-width: 100%;
   padding: var(--s-2) var(--s-3);
   background: var(--hud-panel); border: var(--bd-1) solid var(--hud-hairline);
-  border-radius: var(--r-md) var(--r-md) var(--r-md) 4px;
+  border-radius: var(--r-md);
   font-family: var(--font-body); font-weight: var(--w-body); font-size: var(--t-13);
   color: var(--hud-ink-soft); line-height: 1.35;
 }
@@ -412,7 +412,7 @@
   border: var(--bd-2) solid var(--contour); border-radius: var(--r-pill);
   box-shadow: var(--sh-pop-sm);
 }
-.riw-status__dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--contour); background: var(--basalt-300); }
+.riw-status__dot { width: 10px; height: 10px; border-radius: var(--r-dot); border: 2px solid var(--contour); background: var(--basalt-300); }
 .riw-status[data-state="online"] .riw-status__dot { background: var(--color-success); }
 .riw-status[data-state="connecting"] .riw-status__dot { background: var(--color-cta); animation: riw-pulse 1.1s ease-in-out infinite; }
 .riw-status[data-state="offline"] .riw-status__dot { background: var(--color-danger); }
@@ -427,14 +427,14 @@
   box-shadow: 0 5px 0 var(--basalt-900), 0 14px 26px rgb(0 0 0 / 40%);
   overflow: hidden;
 }
-.riw-minimap__ring { position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 3px rgb(255 255 255 / 16%); pointer-events: none; }
+.riw-minimap__ring { position: absolute; inset: 0; border-radius: var(--r-disc); box-shadow: inset 0 0 0 3px rgb(255 255 255 / 16%); pointer-events: none; }
 .riw-minimap__island { position: absolute; inset: 0; display: grid; place-items: center; }
 .riw-minimap__island svg { width: 96px; height: 96px; }
 .riw-minimap__player {
   position: absolute; left: 50%; top: 54%; width: 16px; height: 16px;
   transform: translate(-50%,-50%) rotate(35deg);
 }
-.riw-minimap__marker { position: absolute; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--contour); box-shadow: 0 1px 0 rgb(0 0 0 / 40%); }
+.riw-minimap__marker { position: absolute; width: 12px; height: 12px; border-radius: var(--r-dot); border: 2px solid var(--contour); box-shadow: 0 1px 0 rgb(0 0 0 / 40%); }
 .riw-minimap__zone {
   position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%);
   padding: 1px var(--s-2);
@@ -445,7 +445,7 @@
   position: absolute; right: 4px; top: 4px; width: 26px; height: 26px;
   display: grid; place-items: center;
   color: var(--basalt-900); background: var(--color-cta);
-  border: var(--bd-2) solid var(--contour); border-radius: 8px; cursor: pointer;
+  border: var(--bd-2) solid var(--contour); border-radius: var(--r-lg); cursor: pointer;
 }
 .riw-minimap__expand svg { width: 14px; height: 14px; }
 
@@ -468,7 +468,7 @@
   font-family: var(--font-display); font-size: var(--t-11); color: #fff;
   background: var(--basalt-800); border: 2px solid var(--contour); border-radius: var(--r-pill);
 }
-.riw-slot__rarity { position: absolute; left: 4px; top: 4px; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--contour); }
+.riw-slot__rarity { position: absolute; left: 4px; top: 4px; width: 8px; height: 8px; border-radius: var(--r-dot); border: 1.5px solid var(--contour); }
 
 /* ---------- ZOOM (slider vertical) ---------- */
 .riw-zoom {
@@ -491,7 +491,7 @@
 
 /* ---------- COMMANDES TACTILES ---------- */
 .riw-joystick {
-  position: relative; width: 116px; height: 116px; border-radius: 50%;
+  position: relative; width: 116px; height: 116px; border-radius: var(--r-disc);
   background: rgb(17 15 14 / 46%); border: var(--bd-3) solid rgb(247 243 232 / 22%);
   box-shadow: var(--sh-float); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
 }
@@ -499,11 +499,11 @@
   position: absolute; left: 50%; top: 50%; width: 54px; height: 54px;
   transform: translate(-50%,-50%);
   background: radial-gradient(circle at 50% 35%, var(--sun-200), var(--sun-400));
-  border: var(--bd-3) solid var(--contour); border-radius: 50%;
+  border: var(--bd-3) solid var(--contour); border-radius: var(--r-disc);
   box-shadow: 0 4px 0 var(--sun-700), 0 8px 14px rgb(0 0 0 / 40%);
 }
 .riw-action-btn {
-  width: 84px; height: 84px; border-radius: 50%;
+  width: 84px; height: 84px; border-radius: var(--r-disc);
   display: grid; place-items: center; gap: 0;
   font-family: var(--font-display); font-size: var(--t-13); color: var(--basalt-900);
   background: radial-gradient(circle at 50% 35%, var(--sun-200), var(--color-cta) 75%);
@@ -538,6 +538,5 @@
 /* ---------- DEBUG OVERLAY ---------- */
 .riw-debug {
   padding: var(--s-2) var(--s-3); border-left: var(--bd-4) solid var(--color-cta);
-  background: rgb(8 8 7 / 84%); border-radius: 6px;
-  font-family: var(--font-mono); font-size: var(--t-12); color: var(--hud-ink-soft); white-space: nowrap;
-}
+  background: rgb(8 8 7 / 84%); border-radius: var(--r-lg);
+  font-family: var(--font-mon

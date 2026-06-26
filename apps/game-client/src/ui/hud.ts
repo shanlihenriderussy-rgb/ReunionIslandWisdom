@@ -16,6 +16,7 @@ export type HudController = {
   isPaused: () => boolean;
   isMapView: () => boolean;
   getCameraZoom: () => number;
+  setObjectiveStage: (stage: 1 | 2 | 3) => void;
   dispose: () => void;
 };
 
@@ -24,6 +25,7 @@ const OFFLINE_AFTER_MS = 4000;
 const START_OBJECTIVE_NPC_NAME = "Tatie Snack";
 const ROUTE_OBJECTIVE_NPC_NAME = "Chauffeur Car Jaune";
 const EXIT_OBJECTIVE_NPC_NAME = "Guide Maido";
+const START_QUEST_TITLE = "Éveil de la Fournaise";
 
 type InvItem = {
   name: string;
@@ -212,15 +214,15 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
 
   const objStep1 = document.createElement("li");
   objStep1.className = "riw-step is-current";
-  objStep1.innerHTML = `<span class="riw-step__box"></span> <span>Rejoins le rebord du cratère Dolomieu.</span>`;
+  objStep1.innerHTML = `<span class="riw-step__box"></span> <span>Parle à Tatie Snack au départ du sentier.</span>`;
 
   const objStep2 = document.createElement("li");
   objStep2.className = "riw-step";
-  objStep2.innerHTML = `<span class="riw-step__box"></span> <span>Observe l'Enclos Fouqué et le cône central.</span>`;
+  objStep2.innerHTML = `<span class="riw-step__box"></span> <span>Suis le chemin vers le Chauffeur Car Jaune.</span>`;
 
   const objStep3 = document.createElement("li");
   objStep3.className = "riw-step";
-  objStep3.innerHTML = `<span class="riw-step__box"></span> <span>Repère le Piton des Neiges au nord-ouest.</span>`;
+  objStep3.innerHTML = `<span class="riw-step__box"></span> <span>Monte au point de vue Maïdo / Mafate.</span>`;
 
   objSteps.append(objStep1, objStep2, objStep3);
   objectivePanel.append(objHead, objSteps);
@@ -384,14 +386,14 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
   questBody.style.flexDirection = "column";
   questBody.style.gap = "8px";
   questBody.innerHTML = `
-    <div style="font-weight:bold; color:var(--hud-gold-ink);">Éveil de la Fournaise</div>
-    <div style="color:var(--hud-ink-soft);">◆ Départ : rebord du cratère Dolomieu</div>
-    <div style="color:var(--hud-ink-soft);">◆ Parcours : rebord → Enclos Fouqué → cône central → vue Piton des Neiges</div>
+    <div style="font-weight:bold; color:var(--hud-gold-ink);">${START_QUEST_TITLE}</div>
+    <div style="color:var(--hud-ink-soft);">◆ Départ : snack de Saint-Paul / Saint-Gilles</div>
+    <div style="color:var(--hud-ink-soft);">◆ Parcours : lagon → Car Jaune → ravine → point de vue Maïdo / Mafate</div>
     <div style="margin-top:8px; border-top:1px solid var(--hud-hairline); padding-top:8px;">
       <div style="font-weight:bold; color:var(--hud-gold-ink); font-size:11px; text-transform:uppercase;">Récompenses</div>
       <div style="display:flex; gap:12px; margin-top:4px; font-size:12px;">
         <span><b>XP</b> 150</span>
-        <span><b>Item</b> Bouchon vapeur</span>
+        <span><b>Item</b> Pierre de lave</span>
       </div>
     </div>
   `;
@@ -662,6 +664,21 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
     debugPanel
   );
 
+  // --- HUD mock gate ---
+  // Audit 2026-06-25 : le HUD mock (jauges HP/Mana/XP, minimap trompeuse, hotbar,
+  // details objet) promet un gameplay inexistant -> no-go public. On le masque par
+  // defaut ; on le reaffiche avec ?hudMock pour les captures de maquette / debug.
+  // On garde le chrome reel : objectif de zone, zone, notifs, chat, carte, pause.
+  const showMockHud = new URLSearchParams(window.location.search).has("hudMock");
+  if (!showMockHud) {
+    playerCard.hidden = true; // jauges HP/Mana + badge niveau 25 (mock)
+    minimapCircle.hidden = true; // minimap SVG statique trompeuse (statusCard conserve)
+    hotbarWrapper.hidden = true; // 10 slots + barre XP (mock)
+    infoPanel.hidden = true; // details objet d'inventaire (mock)
+    createdMenuButtons[0]?.style.setProperty("display", "none"); // bouton Sac (inventaire mock)
+    createdMenuButtons[3]?.style.setProperty("display", "none"); // bouton Social (mock)
+  }
+
   // --- STATE & INTERACTION LOGIC ---
   let paused = false;
   let mapView = new URLSearchParams(window.location.search).has("mapDebug");
@@ -674,8 +691,11 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
   renderInfoPanel();
 
   // Show default notifications
-  setTimeout(() => addNotification("Bienvenue à La Réunion ! Touche I : sac · J : quêtes · M : carte."), 500);
-  setTimeout(() => addNotification("Nouvelle quête : rejoins le rebord du cratère Dolomieu."), 2500);
+  const welcomeControls = showMockHud
+    ? "Touche I : sac · J : quêtes · M : carte."
+    : "Touche J : quêtes · M : carte.";
+  setTimeout(() => addNotification(`Bienvenue à La Réunion ! ${welcomeControls}`), 500);
+  setTimeout(() => addNotification(`Nouvelle quête : ${START_QUEST_TITLE}.`), 2500);
 
   function addNotification(text: string): void {
     const line = document.createElement("div");
@@ -722,6 +742,9 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
   }
 
   function toggleModal(name: ModalName): void {
+    if (name === "inventory" && !showMockHud) {
+      return;
+    }
     if (openModal === name) {
       closeModals();
     } else {
@@ -859,16 +882,16 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
     if (stage >= 1) {
       markStepDone(objStep1);
       objStep2.classList.add("is-current");
-      addNotification("Objectif : observe l'Enclos Fouqué et le cône central.");
+      addNotification("Objectif : suis le chemin vers le Chauffeur Car Jaune.");
     }
     if (stage >= 2) {
       markStepDone(objStep2);
       objStep3.classList.add("is-current");
-      addNotification("Objectif : repère le Piton des Neiges au nord-ouest.");
+      addNotification("Objectif : monte au point de vue Maïdo / Mafate.");
     }
     if (stage >= 3) {
       markStepDone(objStep3);
-      addNotification("Éveil de la Fournaise validé.");
+      addNotification(`${START_QUEST_TITLE} validé.`);
     }
 
     objectiveStage = stage;
@@ -895,6 +918,9 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
     },
     setZone(label) {
       statusZone.textContent = label;
+    },
+    setObjectiveStage(stage) {
+      setObjectiveStage(stage);
     },
     setDebug(info) {
       if (!info) {

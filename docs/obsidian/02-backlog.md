@@ -1,5 +1,10 @@
 # Backlog
 
+## Graphismes — voir [[25-graphismes-ameliorations]]
+
+Synthèse priorisée complète : [[25-graphismes-ameliorations]] (audit Codex 2026-06-25).
+Ordre P1 acté : (1) HUD mock caché (lève no-go audit) → (2) nappe lave + fumerolles `depthWrite:false` → (3) désactiver GLB monolithique si streamer actif.
+
 ## Bugs priorises (P0-P3)
 
 Grille et process : voir [[03-playtests]]. Detail par bug : [[_templates/bug]].
@@ -13,6 +18,10 @@ Grille et process : voir [[03-playtests]]. Detail par bug : [[_templates/bug]].
 - [ ] Remplacer le relief STL par un MNT fiable IGN RGE ALTI D974.
 - [ ] Audit visuel global no-go : aligner zone de depart, objectif HUD, label zone, PNJ et couches monde. Voir [[playtests/2026-06-25-audit-visuel-global]].
 - [x] Fix interaction `E` : serveur authoritative realigne temporairement sur la zone Ouest, sinon il refusait les PNJ par distance. Voir [[iterations/2026-06-25-fix-interaction-e]].
+- [x] Fix interaction `E` / bouton parler : fallback dialogue local si Colyseus est offline ou lent. Voir [[iterations/2026-06-26-interaction-e-fallback]].
+- [x] Fix connexion online locale : `Server.listen()` Colyseus officiel + compat reservation serveur 0.17 / client JS 0.16. Voir [[iterations/2026-06-26-interaction-e-fallback]].
+- [ ] Mobile : reduire le panneau dialogue en bottom sheet compacte, lisible sans masquer le joueur.
+- [ ] Migrer la progression de quete dialogue vers un etat serveur authoritative avant recompenses/inventaire.
 
 ### P2 — mineur (go possible)
 
@@ -31,7 +40,8 @@ Grille et process : voir [[03-playtests]]. Detail par bug : [[_templates/bug]].
 - [ ] Verifier praticabilite des pentes du cone en `?mapDebug` + au spawn.
 - [ ] Instancing rochers Fournaise si besoin perf mobile.
 - [x] Fumerolles low-poly statiques (`makeFumarole`, 5 seedees, vapeur translucide) — livre 2026-06-24, cf. iterations/2026-06-24-fournaise-fumerolles. Version particules animees reste optionnelle (decision DA avant).
-- [ ] TEST : verifier fumerolles en `?mapDebug` (ancrage sol, opacite, pas de chevauchement marqueurs).
+- [x] Fumerolles `depthWrite:false` + garde-fou clearance cairn/cone (`FUMAROLE_MIN_CLEAR`) — livre 2026-06-26, cf. iterations/2026-06-26-fix-fumerolle-clearance.
+- [ ] TEST : verifier fumerolles en `?mapDebug` (ancrage sol, opacite, pas de chevauchement marqueurs) — controle visuel restant apres build Windows.
 
 ## Gameplay
 
@@ -40,6 +50,9 @@ Grille et process : voir [[03-playtests]]. Detail par bug : [[_templates/bug]].
 - [ ] Ajouter interaction serveur generique `inspect`.
 - [ ] Ajouter premier event serveur `bouchon-route-littoral`.
 - [x] Ajouter interaction PNJ avec touche `E`.
+- [ ] Varier les verbes d'interaction par cible : parler, inspecter, observer, ramasser.
+- [ ] Ajouter un feedback "hors ligne - progression non sauvegardee" quand un dialogue local s'ouvre sans serveur.
+- [ ] Ajouter un choix simple dans le premier dialogue avant validation objectif.
 - [ ] Ajouter quete "Bouchon Route du Littoral".
 - [ ] Ajouter inventaire serveur.
 - [ ] Ajouter emotes.
@@ -110,5 +123,3 @@ Detail complet : [[24-hebergement-production]]. Decision : [[04-decisions]] ADR-
 - [ ] P2 : revalider la ressemblance B1 par capture desktop/mobile apres la passe Codex.
 - [ ] Revalider en PWA / Chrome apres build hors sandbox.
 - [x] Package web robuste : staging versionne pour eviter les dossiers verrouilles par serveur local.
-
-

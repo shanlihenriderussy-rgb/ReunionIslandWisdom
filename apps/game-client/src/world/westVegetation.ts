@@ -43,10 +43,10 @@ const SPECIES = {
       kenneyAssets.nature.treePalm,
       kenneyAssets.nature.treeDetailed
     ],
-    minH: 3.4,
-    maxH: 5.2,
+    minH: 3.0,
+    maxH: 4.35,
     collider: 0.28,
-    pathClearance: 1.6
+    pathClearance: 3.2
   },
   // Sous-bois : buissons. Petit collider.
   bush: {
@@ -132,6 +132,22 @@ function pick<T>(rng: () => number, arr: readonly T[]): T {
   return arr[Math.floor(rng() * arr.length)] as T;
 }
 
+// Pondération canopée (aligné sur SPECIES.canopy.urls) : évite "le même palmier copié 30 fois".
+// Domine les palmiers droits (~60 %), un peu de bend + variété d'arbres.
+const CANOPY_WEIGHTS = [0.35, 0.15, 0.25, 0.08, 0.12, 0.05] as const;
+
+function pickCanopyUrl(rng: () => number): string {
+  const urls = SPECIES.canopy.urls;
+  let r = rng();
+  for (let i = 0; i < urls.length; i += 1) {
+    r -= CANOPY_WEIGHTS[i] ?? 0;
+    if (r <= 0) {
+      return urls[i] as string;
+    }
+  }
+  return urls[0] as string;
+}
+
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
@@ -173,7 +189,7 @@ export const WEST_VEGETATION_SEED = 97431;
 
 // Densite "luxuriante" : nombre de tentatives de pose par metre de chemin, par cote.
 const SAMPLES_PER_UNIT = 0.9;
-const SIDE_OFFSET_MIN = 2.2;
+const SIDE_OFFSET_MIN = 3.0;
 const SIDE_OFFSET_MAX = 13.0;
 
 export function generateWestVegetation(seed: number = WEST_VEGETATION_SEED): VegCandidate[] {
@@ -203,6 +219,15 @@ export function generateWestVegetation(seed: number = WEST_VEGETATION_SEED): Veg
       const baseZ = a.z + dz * t;
       const band = getVegetationBand(baseX, baseZ);
 
+      // Densite reduite cote Maido : la jungle devenait un mur illisible (cf. capture 2026-06-06).
+      // On saute ~50 % des samples sur le rebord Maido, ~25 % a mi-pente.
+      if (band === "maidoRim" && rng() < 0.5) {
+        continue;
+      }
+      if (band === "maidoMid" && rng() < 0.25) {
+        continue;
+      }
+
       // Deux cotes du chemin, densite luxuriante => 1 a 2 props par cote et par sample.
       for (const side of [-1, 1] as const) {
         const clusterCount = band === "maidoRim" ? 1 : 1 + Math.floor(rng() * 2);
@@ -220,7 +245,7 @@ export function generateWestVegetation(seed: number = WEST_VEGETATION_SEED): Veg
           counter += 1;
           out.push({
             id: `westveg-${key}-${counter}`,
-            url: pick(rng, sp.urls),
+            url: key === "canopy" ? pickCanopyUrl(rng) : pick(rng, sp.urls),
             x: Number(x.toFixed(2)),
             z: Number(z.toFixed(2)),
             height: Number(lerp(sp.minH, sp.maxH, rng()).toFixed(2)),

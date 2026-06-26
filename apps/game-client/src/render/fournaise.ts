@@ -29,12 +29,48 @@ const SCATTER_SEED = 0xf0c12a;
 const FUMAROLE_COUNT = 5;
 const FUMAROLE_RING = RIM_RADIUS * 0.72;
 const FUMAROLE_SEED = 0x3b9a17;
+// Marge mini entre une fumerolle et un repere d'objectif (cairn/cone) pour eviter
+// le chevauchement visuel quel que soit le seed (cf. verif 2026-06-26).
+const FUMAROLE_MIN_CLEAR = 2.2;
+
+// Reperes d'objectif (places plus bas) : evites par les fumerolles.
+const CAIRN_POS = new THREE.Vector2(65.9, -35);
+const CONE_POS = new THREE.Vector2(65.9, -37);
+const SIGHT_POS = new THREE.Vector2(63, -33);
+
+// Spawn de depart (rebord nord du cratere Dolomieu). Doit rester synchro avec la
+// zone `piton-de-la-fournaise` de @riw/content (meme x/z/yaw).
+export const FOURNAISE_SPAWN = { x: 65.9, y: 9, z: -35, yaw: Math.PI } as const;
+
+// Points d'objectif Fournaise (x dans .x, z dans .y) consommes par GameApp pour
+// l'auto-progression par position : rebord -> cone/Enclos -> repere Piton des Neiges.
+export const FOURNAISE_OBJECTIVE_POINTS = {
+  rebord: CAIRN_POS,
+  cone: CONE_POS,
+  sight: SIGHT_POS
+} as const;
 
 const basaltDark = 0x2c2826;
 const basaltMid = 0x403a36;
 const scoriaRed = 0x6e3b2f;
 const steamPale = 0xcfc9c4;
 const markerInk = 0xd8c8b0;
+const lavaGlow = 0xff6a2a;
+const craterFloorColor = 0x3a1e16;
+
+// FX animes (lueur de lave) : pulsation douce ~1.6 s, pilotee par GameApp via updateFournaiseFx.
+type LavaFx = { mesh: THREE.Mesh; baseOpacity: number };
+const lavaFx: LavaFx[] = [];
+
+// Appele chaque frame : fait respirer la nappe de lave sans recompiler de shader.
+export function updateFournaiseFx(elapsedSeconds: number): void {
+  for (const fx of lavaFx) {
+    const material = fx.mesh.material;
+    if (material instanceof THREE.MeshBasicMaterial) {
+      material.opacity = fx.baseOpacity * (0.8 + 0.2 * Math.sin(elapsedSeconds * 3.9));
+    }
+  }
+}
 
 export function addFournaiseBlockout(scene: THREE.Scene): void {
   void fetch(terrainAssets.laReunion.reliefCollision)
@@ -46,6 +82,10 @@ export function addFournaiseBlockout(scene: THREE.Scene): void {
 
       const group = new THREE.Group();
       group.name = "Blockout_PitonFournaise";
+
+      // Reset des FX : evite d'empiler des references de lave si le blockout est rebati
+      // (sinon updateFournaiseFx anime des meshes orphelins -> fuite memoire).
+      lavaFx.length = 0;
 
       // 1) Anneau de rochers de basalte autour du rebord du cratere.
       for (let i = 0; i < RIM_ROCK_COUNT; i += 1) {
@@ -76,20 +116,35 @@ export function addFournaiseBlockout(scene: THREE.Scene): void {
       // 3) Fumerolles (vapeur volcan actif), anneau interieur seede, centre evite.
       const frng = mulberry32(FUMAROLE_SEED);
       for (let i = 0; i < FUMAROLE_COUNT; i += 1) {
-        const a = frng() * Math.PI * 2;
+        let a = frng() * Math.PI * 2;
         const r = FUMAROLE_RING * (0.85 + frng() * 0.3);
-        const x = CRATER_CENTER.x + Math.cos(a) * r;
-        const z = CRATER_CENTER.y + Math.sin(a) * r;
+        // Si la fumerolle tombe trop pres d'un repere, on tourne l'angle (deterministe,
+        // ne consomme pas le rng) jusqu'a degager la marge. Bornee a 8 essais.
+        let x = CRATER_CENTER.x + Math.cos(a) * r;
+        let z = CRATER_CENTER.y + Math.sin(a) * r;
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          const dCairn = Math.hypot(x - CAIRN_POS.x, z - CAIRN_POS.y);
+          const dCone = Math.hypot(x - CONE_POS.x, z - CONE_POS.y);
+          if (dCairn >= FUMAROLE_MIN_CLEAR && dCone >= FUMAROLE_MIN_CLEAR) {
+            break;
+          }
+          a += 0.9;
+          x = CRATER_CENTER.x + Math.cos(a) * r;
+          z = CRATER_CENTER.y + Math.sin(a) * r;
+        }
         group.add(makeFumarole(x, z, terrain, 0.7 + frng() * 0.6, i + 200));
       }
 
+      // 3b) Fond du cratere Dolomieu : roche sombre + nappe de lave endormie (lueur animee).
+      group.add(makeCraterGlow(CRATER_CENTER.x, CRATER_CENTER.y, terrain));
+
       // 4) Reperes d'objectif (volumes lisibles, lies au HUD).
       // Obj 1 : rebord Dolomieu (= spawn).
-      group.add(makeCairn(65.9, -35, terrain, "Rebord Dolomieu"));
+      group.add(makeCairn(CAIRN_POS.x, CAIRN_POS.y, terrain, "Rebord Dolomieu"));
       // Obj 2 : cone central (sommet).
-      group.add(makeConeMarker(65.9, -37, terrain));
+      group.add(makeConeMarker(CONE_POS.x, CONE_POS.y, terrain));
       // Obj 3 : point de vue Piton des Neiges (oriente nord-ouest).
-      group.add(makeSightMarker(63, -33, terrain, new THREE.Vector2(-1, 1)));
+      group.add(makeSightMarker(SIGHT_POS.x, SIGHT_POS.y, terrain, new THREE.Vector2(-1, 1)));
 
       scene.add(group);
     })
@@ -119,7 +174,8 @@ function makeRock(
 
   const material = new THREE.MeshStandardMaterial({ color, roughness: 0.98, metalness: 0.02, flatShading: true });
   const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.set(x, sampleHeight(terrain, x, z) + scale * 0.45, z);
+  // Clamp bas : evite que les petites scories (scale < 0.4) ne s'enfoncent dans le sol.
+  mesh.position.set(x, sampleHeight(terrain, x, z) + Math.max(0.18, scale * 0.45), z);
   mesh.rotation.y = hash01(seed * 1.7) * Math.PI * 2;
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -143,18 +199,68 @@ function makeCairn(x: number, z: number, terrain: TerrainCollisionData, label: s
     g.add(block);
     stackY += s * 1.1;
   }
+  // Apex sable clair : signale le repere d'objectif (silhouette de cairn reconnaissable).
+  const apex = new THREE.Mesh(
+    new THREE.ConeGeometry(0.16, 0.34, 4),
+    new THREE.MeshStandardMaterial({ color: 0xe6d59a, roughness: 0.7, flatShading: true })
+  );
+  apex.position.y = stackY + 0.17;
+  apex.castShadow = true;
+  g.add(apex);
   g.position.set(x, y, z);
+  return g;
+}
+
+// Fond du cratere : disque de roche sombre + nappe de lave additive (lueur animee).
+function makeCraterGlow(x: number, z: number, terrain: TerrainCollisionData): THREE.Group {
+  const g = new THREE.Group();
+  g.name = "FournaiseCraterGlow";
+
+  const floor = new THREE.Mesh(
+    new THREE.CircleGeometry(3.8, 32),
+    new THREE.MeshStandardMaterial({ color: craterFloorColor, roughness: 1, metalness: 0, flatShading: true })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = 0.05;
+  floor.receiveShadow = true;
+  g.add(floor);
+
+  const lavaMat = new THREE.MeshBasicMaterial({
+    color: lavaGlow,
+    transparent: true,
+    opacity: 0.32,
+    depthWrite: false,
+    side: THREE.DoubleSide
+  });
+  const lava = new THREE.Mesh(new THREE.CircleGeometry(2.6, 28), lavaMat);
+  lava.rotation.x = -Math.PI / 2;
+  lava.position.y = 0.12;
+  lava.renderOrder = 2;
+  g.add(lava);
+  lavaFx.push({ mesh: lava, baseOpacity: 0.32 });
+
+  g.position.set(x, sampleHeight(terrain, x, z), z);
   return g;
 }
 
 function makeConeMarker(x: number, z: number, terrain: TerrainCollisionData): THREE.Group {
   const g = new THREE.Group();
   g.name = "FournaiseConeMarker";
+  // Socle scorie : ancre visuellement le cone au sol (evite l'effet "cone qui flotte").
+  const base = new THREE.Mesh(
+    new THREE.CylinderGeometry(2.6, 2.85, 0.42, 8),
+    new THREE.MeshStandardMaterial({ color: 0x6e3b2f, roughness: 0.96, flatShading: true })
+  );
+  base.position.y = 0.21;
+  base.castShadow = true;
+  base.receiveShadow = true;
+  g.add(base);
+
   const cone = new THREE.Mesh(
     new THREE.ConeGeometry(2.1, 3.2, 7),
     new THREE.MeshStandardMaterial({ color: basaltDark, roughness: 0.98, flatShading: true })
   );
-  cone.position.y = 1.6;
+  cone.position.y = 1.2;
   cone.castShadow = true;
   cone.receiveShadow = true;
   g.add(cone);
@@ -223,7 +329,8 @@ function makeFumarole(
   let puffY = 0.4 * scale;
   for (let i = 0; i < 3; i += 1) {
     const s = (0.32 + i * 0.16) * scale;
-    const puffMat = new THREE.MeshStandardMaterial({ color: steamPale, roughness: 1, flatShading: true, transparent: true, opacity: 0.5 - i * 0.12 });
+    // depthWrite:false -> evite le halo opaque qui masque rochers/cone derriere la vapeur (cf. test 2026-06-25).
+    const puffMat = new THREE.MeshStandardMaterial({ color: steamPale, roughness: 1, flatShading: true, transparent: true, opacity: 0.5 - i * 0.12, depthWrite: false });
     const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), puffMat);
     puff.position.set((hash01(seed + i) - 0.5) * 0.3 * scale, puffY, (hash01(seed + i + 5) - 0.5) * 0.3 * scale);
     g.add(puff);

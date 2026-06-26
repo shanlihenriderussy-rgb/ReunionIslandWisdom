@@ -4,9 +4,9 @@ Cycle : 1 phase par jour. DEV -> TEST -> FIX -> chantier suivant.
 
 ## Etat courant
 
-- phase: FIX
-- chantier: props-design
-- prochain_chantier: equipment
+- phase: DEV
+- chantier: equipment
+- prochain_chantier: game-logic
 
 ## Politique de validation (sandbox)
 
@@ -29,15 +29,16 @@ Cycle : 1 phase par jour. DEV -> TEST -> FIX -> chantier suivant.
 - Revue statique : module pur, pas de DOM, pas de reseau ajoute, pas de `any`. Non bloquant (aucun collider). Conforme CLAUDE.md.
 - Geometrie verifiee : anneau fumerolles r=4.4..5.96 (RIM_RADIUS*0.72), centre cratere evite (min > RIM*0.55=3.96), pas de chevauchement avec cone central (dist 2.0) ni rebord rocheux (7.2). Ancrage sol OK via `sampleHeight`.
 
-## Feature a corriger / polish (FIX du jour suivant)
+## Feature a corriger / polish (FIX du jour suivant) — RESOLU 2026-06-26
 
-- props-design : bouffees de vapeur `transparent:true` sans `depthWrite:false` -> risque de halo/tri de transparence devant rochers et cones. Ajouter `depthWrite:false` + leger `roughness`/`emissive` froid optionnel.
-- Proximite possible fumerolle <-> cairn "Rebord Dolomieu" (65.9,-35, dist centre 4.0) selon tirage seed : verifier en `?mapDebug`, sinon reduire `FUMAROLE_RING` ou exclure secteur cairn.
+- [x] props-design : `depthWrite:false` deja en place sur les bouffees de vapeur (`makeFumarole`, ligne 297, materiau `MeshStandardMaterial transparent`). Polish OK.
+- [x] Proximite fumerolle <-> cairn/cone : garde-fou deterministe ajoute (`FUMAROLE_MIN_CLEAR=2.2`, nudge angulaire borne a 8 essais). Verif node : min dCairn=2.55 avec seed actuel (aucun nudge declenche, 0 regression visuelle), robuste a tout futur seed. Coords objectifs centralisees en `CAIRN_POS`/`CONE_POS`.
 
 ## Bugs en attente (renseignes par TEST, corriges par FIX)
 
 - Audit visuel global 2026-06-25 : no-go public.
-- P1 : depart Ouest mais objectif Fournaise ; PNJ visibles alors que doc dit non spawnes ; couches monde trop nombreuses ; HUD mock trop actif ; risque overlap GLB monolithique/chunks.
+- P1 resolu 2026-06-26 : depart Ouest mais objectif Fournaise ; HUD mock trop actif.
+- Restent a surveiller : PNJ visibles lies au gameplay Ouest ; couches monde trop nombreuses ; risque overlap GLB monolithique/chunks.
 - Detail : [[../playtests/2026-06-25-audit-visuel-global]].
 
 ## Chantiers (round-robin)
@@ -58,6 +59,18 @@ Cycle : 1 phase par jour. DEV -> TEST -> FIX -> chantier suivant.
 - 2026-06-15 18:53 — FIX level-design : ajout `isOnWestPath` + `WEST_BLOCKOUT_PATH_HALF_WIDTH` (seuil lateral sentier ouest). Module pur, 6/6 cas OK. Round-robin -> props-design. Phase suivante : DEV.
 - 2026-06-24 17:29 — DEV props-design : ajout `makeFumarole` (vapeur volcan, 5 fumerolles seedees, non bloquant) dans `fournaise.ts`. Reecriture complete du fichier (mount Linux laggait, fichier Windows OK). Phase suivante : TEST.
 - 2026-06-25 01:29 — TEST props-design : `makeFumarole` valide. Typecheck fichier isole 0 erreur (types three reels). Geometrie/ancrage OK, non bloquant. 1 polish (transparence sans depthWrite) + 1 verif mapDebug (proximite cairn). Phase suivante : FIX.
+- 2026-06-26 04:18 — DEV graphismes P2 (eau) : ocean bicolore lagon/large (vertex colors `world.ts`) + houle ±0.02 m/4 s sur ecume (`updateWestWaterFx` dans `westScenic.ts`, branche `GameApp`). Sanity node OK (gradient + bornes houle). typecheck/lint/build a relancer sous Windows. Cf. [[../iterations/2026-06-26-eau-lagon-houle]].
+- 2026-06-26 04:51 — DEV graphismes P2 (toits) : `weatherRoof` (vertex colors tole usee) sur cases creoles + kiosk. Prise en compte passe Codex (baseline verte). LUT color grading reportee (pas d'EffectComposer, cout mobile). Sanity node OK. typecheck/lint/build a relancer sous Windows. Cf. [[../iterations/2026-06-26-toits-weathering]].
+- 2026-06-26 05:18 — DEV perf P3 (instancing) : `buildGltfInstances` (`gltf.ts`) + branchement `westVegetation.ts` -> palmiers/rochers Ouest en `InstancedMesh` (regroupes par URL). Sanity three reel : placement identique a l'ancien prop (delta 1.3e-15), reset scale OK. Decision ADR-011 (ordre perf : instancing -> audit draw calls -> code-splitting bundle -> LUT polish). Windows : typecheck OK, lint OK, build OK. FPS/draw calls a mesurer. Cf. [[../iterations/2026-06-26-instancing-vegetation]].
+- 2026-06-26 07:20 — FIX props-design : `depthWrite:false` deja applique (polish OK). Ajout garde-fou clearance fumerolle/cairn/cone (`FUMAROLE_MIN_CLEAR`, nudge angulaire deterministe) + `CAIRN_POS`/`CONE_POS`. Verif node : positions identiques au seed actuel (0 regression), min dCairn 2.55. typecheck/lint/build a relancer sous Windows (mount Linux tronque le fichier + symlinks pnpm absents). Round-robin -> equipment. Phase suivante : DEV.
+- 2026-06-26 08:28 — FIX graphismes Claude : objectif HUD aligne sur Saint-Paul / Saint-Gilles, inventaire mock bloque hors `?hudMock`, chemin passe en `MeshBasicMaterial` pour supprimer les entailles noires. Suite mobile : notifications au-dessus des controles tactiles, joystick/action reduits. Typecheck/lint/build OK + captures navigateur desktop/mobile OK. Cf. [[../iterations/2026-06-26-codex-correction-claude]].
+- 2026-06-26 09:22 — DEV build perf : `main.ts` charge `GameApp` en import dynamique + `vite.config.ts` active code splitting Rolldown et budget runtime 950 kB. Build : shell `index` 2.44 kB, runtime `GameApp` 900.87 kB, plus de warning chunk. Typecheck/lint/build OK. Cf. [[../iterations/2026-06-26-code-splitting-runtime]].
+- 2026-06-26 10:10 — TEST perf draw calls : ajout probe `?perfDebug` (`window.__RIW_PERF__`) + captures Edge headless. Gameplay Ouest : 128 calls / 194575 triangles / 143 fps median. Mobile Pixel 5 : 106 calls / 147497 triangles. Carte debug : 246 calls / 475818 triangles => prochaine cible LOD/culling carte. Cf. [[../iterations/2026-06-26-audit-perf-draw-calls]].
+- 2026-06-26 10:25 — TEST executable : `corepack pnpm cook:desktop` bloque sur Windows Application Control (`@tauri-apps/cli-win32-x64-msvc` natif refuse). Fallback valide : `corepack pnpm --filter @riw/game-client build` OK + `cargo build --release` OK + smoke launch `target/release/riw.exe` 10 s OK, pas de crash. MSI/NSIS non regeneres sur cette passe.
+- 2026-06-26 10:45 — DEV installation/lancement : ajout scripts Windows `launch:web`, `stop:web`, `launch:desktop`, `cook:desktop` fallback Cargo. README + contrat MCP mis a jour. Cf. [[../iterations/2026-06-26-install-launch-files]].
+- 2026-06-26 05:56 — FIX bug sweep (tous types) : (1) `GameApp.resize` garde `width/height <= 0` (aspect NaN/Infinity -> projection corrompue) ; (2) `fournaise.ts` reset `lavaFx` au build (fuite/refs periimees, cohérent avec `waterFx`). Audit serveur (Zod/cooldowns/distance/sanitize) + client (XSS textContent, NetworkClient, collision, players, InputController) : sains. Windows : typecheck OK, lint OK, build OK. Cf. [[../iterations/2026-06-26-bug-sweep]].
+- 2026-06-26 10:58 — FIX gameplay interaction : `E`/bouton action ouvre un dialogue local immediat via `NetworkClient.openLocalDialogue`, puis conserve `sendInteract` serveur. Typecheck OK, lint OK, build OK. Playtest Edge offline : desktop `E` OK, mobile bouton OK. Dette : dialogue mobile trop haut + progression quete encore cote HUD. Cf. [[../iterations/2026-06-26-interaction-e-fallback]].
+- 2026-06-26 11:22 — FIX online interaction : serveur Colyseus repasse par `Server.listen()` officiel + health Express ; client normalise la reservation Colyseus 0.17 pour `colyseus.js@0.16`. Validation Chrome CDP : `En ligne - 6`, prompt `E Parler a Tatie Snack`, touche `E` -> dialogue `Tatie Snack`. Typecheck/lint client+serveur OK. Cf. [[../iterations/2026-06-26-interaction-e-fallback]].
 
 ## Validation distribution 2026-06-25 03:19
 
@@ -85,3 +98,13 @@ Cycle : 1 phase par jour. DEV -> TEST -> FIX -> chantier suivant.
 - Artefacts desktop :
   - `apps/game-client/src-tauri/target/release/bundle/msi/Reunion Island Wisdom_0.1.0_x64_en-US.msi` (22,82 Mo) ;
   - `apps/game-client/src-tauri/target/release/bundle/nsis/Reunion Island Wisdom_0.1.0_x64-setup.exe` (21,76 Mo).
+
+## Update packages 2026-06-26
+
+- `corepack pnpm update -r --latest` : OK.
+- `corepack pnpm install` : OK avec `pnpm@10.12.1`.
+- `corepack pnpm outdated -r` : aucun paquet restant.
+- `corepack pnpm typecheck` : OK.
+- `corepack pnpm lint` : OK.
+- `corepack pnpm build` : OK.
+- Pnpm 11 teste puis non conserve : blocage `minimumReleaseAge` sur paquets publies trop recemment.
