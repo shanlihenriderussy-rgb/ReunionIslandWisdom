@@ -1,0 +1,202 @@
+[
+  {
+    "id": "barquette-cari",
+    "name": "Barquette cari",
+    "category": "consommable",
+    "slot": "aucun",
+    "stackable": true,
+    "maxStack": 20,
+    "weight": 0.4,
+    "description": "Plat chaud en barquette. Rend des forces sur le sentier."
+  },
+  {
+    "id": "rougail-saucisse",
+    "name": "Rougail saucisse",
+    "category": "consommable",
+    "slot": "aucun",
+    "stackable": true,
+    "maxStack": 20,
+    "weight": 0.45,
+    "description": "Saucisse mijotee a la tomate et au piment. Repas complet."
+  },
+  {
+    "id": "bouchon-vapeur",
+    "name": "Bouchon vapeur",
+    "category": "consommable",
+    "slot": "aucun",
+    "stackable": true,
+    "maxStack": 20,
+    "weight": 0.2,
+    "description": "Petite bouchee vapeur a partager. Encas leger."
+  },
+  {
+    "id": "samoussa-piment",
+    "name": "Samoussa piment",
+    "category": "consommable",
+    "slot": "aucun",
+    "stackable": true,
+    "maxStack": 20,
+    "weight": 0.15,
+    "description": "Triangle croustillant bien releve. A manger en marchant."
+  },
+  {
+    "id": "bonbon-piment",
+    "name": "Bonbon piment",
+    "category": "consommable",
+    "slot": "aucun",
+    "stackable": true,
+    "maxStack": 20,
+    "weight": 0.12,
+    "description": "Beignet de lentilles epice. Petit coup de fouet."
+  },
+  {
+    "id": "kayamb",
+    "name": "Kayamb",
+    "category": "instrument",
+    "slot": "main",
+    "stackable": false,
+    "maxStack": 1,
+    "weight": 1.1,
+    "description": "Instrument plat du maloya. Donne le rythme du kabar."
+  },
+  {
+    "id": "ticket-car-jaune",
+    "name": "Ticket Car Jaune",
+    "category": "cle",
+    "slot": "aucun",
+    "stackable": true,
+    "maxStack": 10,
+    "weight": 0.01,
+    "description": "Titre de transport du reseau Car Jaune. Ouvre un trajet."
+  },
+  {
+    "id": "cone-route-littoral",
+    "name": "Cone Route du Littoral",
+    "category": "cle",
+    "slot": "aucun",
+    "stackable": true,
+    "maxStack": 10,
+    "weight": 1.5,
+    "description": "Cone de signalisation a inspecter sur la route du littoral."
+  },
+  {
+    "id": "gourde-sentier",
+    "name": "Gourde de sentier",
+    "category": "equipement",
+    "slot": "accessoire",
+    "stackable": false,
+    "maxStack": 1,
+    "weight": 0.6,
+    "description": "Gourde d'eau pour la randonnee. Indispensable vers Mafate."
+  },
+  {
+    "id": "lampe-frontale",
+    "name": "Lampe frontale",
+    "category": "equipement",
+    "slot": "tete",
+    "stackable": false,
+    "maxStack": 1,
+    "weight": 0.3,
+    "description": "Lampe portee sur le front. Eclaire les departs avant l'aube."
+  },
+  {
+    "id": "carte-mafate",
+    "name": "Carte de Mafate",
+    "category": "cle",
+    "slot": "aucun",
+    "stackable": false,
+    "maxStack": 1,
+    "weight": 0.05,
+    "description": "Carte des sentiers du cirque de Mafate. Evite de se perdre."
+  },
+  {
+    "id": "sachet-epices",
+    "name": "Sachet d'epices",
+    "category": "ressource",
+    "slot": "aucun",
+    "stackable": true,
+    "maxStack": 50,
+    "weight": 0.1,
+    "description": "Melange d'epices du marche. Sert aux recettes locales."
+  },
+  {
+    "id": "pierre-volcan",
+    "name": "Pierre du volcan",
+    "category": "ressource",
+    "slot": "aucun",
+    "stackable": true,
+    "maxStack": 50,
+    "weight": 1.2,
+    "description": "Roche basaltique de la Fournaise. Materiau brut a tracer."
+  },
+  {
+    "id": "cape-cyclone",
+    "name": "Cape cyclone",
+    "category": "equipement",
+    "slot": "corps",
+    "stackable": false,
+    "maxStack": 1,
+    "weight": 0.8,
+    "description": "Cape impermeable contre la pluie tropicale et le vent."
+  },
+  {
+    "id": "casquette-974",
+    "name": "Casquette 974",
+    "category": "equipement",
+    "slot": "tete",
+    "stackable": false,
+    "maxStack": 1,
+    "weight": 0.15,
+    "description": "Casquette aux couleurs de l'ile. Protege du soleil."
+  },
+  {
+    "id": "sandales-marche",
+    "name": "Sandales de marche",
+    "category": "equipement",
+    "slot": "pieds",
+    "stackable": false,
+    "maxStack": 1,
+    "weight": 0.5,
+    "description": "Sandales robustes pour le marche et le bord de mer."
+  },
+  {
+    "id": "badge-kabar",
+    "name": "Badge kabar",
+    "category": "equipement",
+    "slot": "accessoire",
+    "stackable": false,
+    "maxStack": 1,
+    "weight": 0.05,
+    "description": "Badge remis aux participants d'un kabar. Signe d'appartenance."
+  },
+  {
+    "id": "carnet-ravine",
+    "name": "Carnet de ravine",
+    "category": "cle",
+    "slot": "aucun",
+    "stackable": false,
+    "maxStack": 1,
+    "weight": 0.2,
+    "description": "Carnet de notes sur les ravines explorees. Garde les indices."
+  },
+  {
+    "id": "panier-marche",
+    "name": "Panier du marche",
+    "category": "equipement",
+    "slot": "accessoire",
+    "stackable": false,
+    "maxStack": 1,
+    "weight": 0.7,
+    "description": "Panier tresse pour rapporter les courses du marche forain."
+  },
+  {
+    "id": "titre-patience-974",
+    "name": "Titre Patience 974",
+    "category": "cle",
+    "slot": "aucun",
+    "stackable": false,
+    "maxStack": 1,
+    "weight": 0.01,
+    "description": "Titre honorifique gagne en gardant son calme dans les bouchons."
+  }
+]

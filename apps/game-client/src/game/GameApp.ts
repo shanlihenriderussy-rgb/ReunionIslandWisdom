@@ -7,7 +7,7 @@ import { NetworkClient } from "../network/NetworkClient";
 import { createHud, type HudController } from "../ui/hud";
 import { configureWorld } from "../render/world";
 import { getBiomeAtPosition } from "../world/biomes";
-import { WEST_BLOCKOUT_SPAWN } from "../world/westBlockout";
+import { WEST_BLOCKOUT_PATH, WEST_BLOCKOUT_SPAWN } from "../world/westBlockout";
 import { createChunkStreamer, type ChunkStreamer } from "./ChunkStreamer";
 import { updateFournaiseFx } from "../render/fournaise";
 import { updateWestWaterFx } from "../render/westScenic";
@@ -130,8 +130,9 @@ export class GameApp {
   private configureScene(): void {
     // Les colliders des props generes (vegetation ouest) sont injectes une fois poses au sol.
     configureWorld(this.scene, (colliders) => this.collision.addColliders(colliders));
-    this.cameraYaw = WEST_BLOCKOUT_SPAWN.yaw;
-    this.cameraPivot.position.set(WEST_BLOCKOUT_SPAWN.x, WEST_BLOCKOUT_SPAWN.y, WEST_BLOCKOUT_SPAWN.z);
+    const spawn = getInitialWestSpawn();
+    this.cameraYaw = spawn.yaw;
+    this.cameraPivot.position.set(spawn.x, spawn.y, spawn.z);
     this.collision.snapToGround(this.cameraPivot.position);
     this.scene.add(this.cameraPivot);
     this.localPlayer.position.copy(this.cameraPivot.position);
@@ -339,4 +340,14 @@ export class GameApp {
     this.renderer.dispose();
     this.network.disconnect();
   }
+}
+
+function getInitialWestSpawn(): { x: number; y: number; z: number; yaw: number } {
+  if (new URLSearchParams(window.location.search).get("spawn") === "maido") {
+    const maido = WEST_BLOCKOUT_PATH[WEST_BLOCKOUT_PATH.length - 1];
+    if (maido) {
+      return { x: maido.x, y: 1.2, z: maido.z, yaw: -1.15 };
+    }
+  }
+  return WEST_BLOCKOUT_SPAWN;
 }

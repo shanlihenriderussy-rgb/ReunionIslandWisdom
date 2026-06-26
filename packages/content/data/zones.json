@@ -1,0 +1,20 @@
+[
+  {
+    "id": "piton-de-la-fournaise",
+    "name": "Piton de la Fournaise",
+    "spawn": { "x": 65.9, "y": 9, "z": -35, "yaw": 3.14 },
+    "description": "Zone de depart : volcan actif du sud-est, rebord de l'Enclos Fouque, cone central, vue sur le Piton des Neiges au nord-ouest."
+  },
+  {
+    "id": "saint-paul-saint-gilles",
+    "name": "Saint-Paul / Saint-Gilles",
+    "spawn": { "x": -78, "y": 1.38, "z": 6, "yaw": -0.45 },
+    "description": "Premier blockout jouable : plage ouest, chemin, ravine basse et montee vers le point de vue Maido / Mafate."
+  },
+  {
+    "id": "route-littoral",
+    "name": "Route du Littoral",
+    "spawn": { "x": -60, "y": 1.65, "z": -36, "yaw": -0.35 },
+    "description": "Mini-zone event autour du bouchon serveur."
+  }
+]

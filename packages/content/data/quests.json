@@ -1,0 +1,44 @@
+[
+  {
+    "id": "premier-tour-saint-paul-saint-gilles",
+    "title": "Premier tour Saint-Paul / Saint-Gilles",
+    "giverNpcId": "tatie-snack",
+    "objective": "Parler a Tatie Snack, suivre le chemin vers le Car Jaune, puis monter au point de vue Maido / Mafate.",
+    "rewardTitle": "Bouchon vapeur"
+  },
+  {
+    "id": "bouchon-route-littoral",
+    "title": "Bouchon Route du Littoral",
+    "giverNpcId": "chauffeur-car-jaune",
+    "objective": "Inspecter 3 cones sur la route.",
+    "rewardTitle": "Patience 974"
+  },
+  {
+    "id": "kayamb-kabar",
+    "title": "Le kayamb du kabar",
+    "giverNpcId": "maitre-kabar",
+    "objective": "Retrouver le kayamb perdu pres de la place.",
+    "rewardTitle": "Rythme Local"
+  },
+  {
+    "id": "sac-mafate",
+    "title": "Sac pour Mafate",
+    "giverNpcId": "agent-sentier",
+    "objective": "Verifier eau, lampe et casse-croute.",
+    "rewardTitle": "Pret Sentier"
+  },
+  {
+    "id": "epices-marche",
+    "title": "Epices du marche",
+    "giverNpcId": "vendeuse-marche",
+    "objective": "Retrouver la caisse d'epices.",
+    "rewardTitle": "Nez Fin"
+  },
+  {
+    "id": "fumee-fournaise",
+    "title": "Fumee Fournaise",
+    "giverNpcId": "ancien-volcan",
+    "objective": "Observer le signal volcan.",
+    "rewardTitle": "Veilleur Volcan"
+  }
+]

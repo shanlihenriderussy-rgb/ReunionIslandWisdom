@@ -270,8 +270,22 @@
 }
 
 /* ---------- DIALOGUE PNJ (cartouche bois) ---------- */
-.riw-dialogue { width: min(560px, 92vw); padding: var(--s-4); }
-.riw-dialogue__top { display: flex; gap: var(--s-3); align-items: flex-start; position: relative; z-index: 1; }
+.riw-dialogue {
+  width: 100%;
+  min-width: 0;
+  padding: var(--s-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.riw-dialogue__top {
+  display: flex;
+  gap: var(--s-4);
+  align-items: flex-start;
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
 .riw-portrait {
   flex: none; width: 64px; height: 64px;
   background: var(--lagoon-200);
@@ -284,16 +298,25 @@
 .riw-dialogue__name {
   font-family: var(--font-display); font-size: var(--t-18); color: var(--wood-ink);
   display: flex; align-items: center; gap: var(--s-2);
+  min-width: 0;
 }
 .riw-dialogue__line {
-  margin: var(--s-2) 0 var(--s-3);
+  margin: var(--s-2) 0 0;
   font-family: var(--font-body); font-weight: var(--w-body);
   font-size: var(--t-16); line-height: 1.4; color: var(--wood-ink);
   text-wrap: pretty;
+  overflow-wrap: anywhere;
 }
-.riw-dialogue__answers { display: flex; flex-wrap: wrap; gap: var(--s-2); position: relative; z-index: 1; }
+.riw-dialogue__answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
 .riw-answer {
-  flex: 1 1 auto; min-height: 40px; padding: 0 var(--s-4);
+  flex: 1 1 180px; min-width: 0; min-height: 40px; padding: 0 var(--s-4);
   display: inline-flex; align-items: center; gap: var(--s-2);
   font-family: var(--font-body); font-weight: var(--w-strong); font-size: var(--t-15);
   color: var(--wood-ink); background: rgb(255 255 255 / 42%);

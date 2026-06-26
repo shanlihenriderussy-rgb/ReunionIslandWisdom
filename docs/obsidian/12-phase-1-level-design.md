@@ -46,6 +46,11 @@ Mise a jour 2026-06-26 (départ Fournaise ACTIF en code) :
 - Dette : étapes 1+2 trop proches (repères < 3 m du spawn) ; spawn `snapToGround` avant collision async à surveiller.
 - ⚠ Coordination : un agent Codex travaillait en parallèle dans la direction inverse (garder départ Ouest). À arbitrer.
 
+Arbitrage 2026-06-26 (Shan) : **départ = Ouest** (Codex pilote l'Ouest : départ, spawn, fidélité B1). **Claude = zone Fournaise + continuité des autres zones**, sans toucher aux fichiers Ouest/spawn.
+
+- Fournaise rapprochée du moodboard B2 (veines de lave, orgues basaltiques, lumière chaude) : [[iterations/2026-06-26-fournaise-b2-habillage]].
+- Le départ Fournaise que Claude avait activé (ADR-013) est laissé à Codex pour réimposition du départ Ouest ; la zone Fournaise et ses repères/objectifs restent en place pour la continuité.
+
 ## Blockout Saint-Paul / Saint-Gilles V1
 
 Mise a jour 2026-06-06 09:31 +04:00 :

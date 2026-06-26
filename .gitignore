@@ -18,10 +18,8 @@ _wtest.txt
 /output/
 Sans titre.*
 /2026-*.md
+*.local
+dist/
+target/
+gen/
 
-# Scratch Obsidian / fichiers temporaires racine — ne pas versionner.
-_tmp_*
-_wtest.txt
-/output/
-Sans titre.*
-/2026-*.md

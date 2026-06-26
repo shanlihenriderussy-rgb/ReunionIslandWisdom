@@ -25,7 +25,7 @@ type ModelOptions = {
   receiveShadow?: boolean;
   hideFallback?: boolean;
   userDataKey?: string;
-  materialMode?: "westVegetation";
+  materialMode?: "westVegetation" | "maidoYellowFlower";
 };
 
 type LoadedGltf = {
@@ -135,7 +135,7 @@ const UNIT_SCALE = new THREE.Vector3(1, 1, 1);
 export async function buildGltfInstances(
   url: string,
   specs: readonly GltfInstanceSpec[],
-  options: { materialMode?: "westVegetation"; castShadow?: boolean; receiveShadow?: boolean } = {}
+  options: { materialMode?: "westVegetation" | "maidoYellowFlower"; castShadow?: boolean; receiveShadow?: boolean } = {}
 ): Promise<THREE.InstancedMesh[]> {
   if (specs.length === 0) {
     return [];
@@ -288,7 +288,8 @@ function prepareObject(object: THREE.Object3D): void {
 
 
 function applyMaterialOptions(object: THREE.Object3D, options: ModelOptions): void {
-  if (options.materialMode !== "westVegetation") {
+  const materialMode = options.materialMode;
+  if (materialMode !== "westVegetation" && materialMode !== "maidoYellowFlower") {
     return;
   }
 
@@ -298,26 +299,29 @@ function applyMaterialOptions(object: THREE.Object3D, options: ModelOptions): vo
     }
 
     if (Array.isArray(child.material)) {
-      child.material = child.material.map((material) => tuneWestVegetationMaterial(material));
+      child.material = child.material.map((material) => tuneVegetationMaterial(material, materialMode));
       return;
     }
 
-    child.material = tuneWestVegetationMaterial(child.material);
+    child.material = tuneVegetationMaterial(child.material, materialMode);
   });
 }
 
-function tuneWestVegetationMaterial(material: THREE.Material): THREE.Material {
+function tuneVegetationMaterial(material: THREE.Material, mode: "westVegetation" | "maidoYellowFlower"): THREE.Material {
   const tuned = material.clone();
   tuned.side = THREE.DoubleSide;
 
   if (tuned instanceof THREE.MeshStandardMaterial || tuned instanceof THREE.MeshBasicMaterial) {
+    if (mode === "maidoYellowFlower") {
+      tuned.color.lerp(new THREE.Color(0xffd83d), 0.82);
+    }
     const maxChannel = Math.max(tuned.color.r, tuned.color.g, tuned.color.b);
     // Seuil "sombre" remonte 0.12 -> 0.18 : recupere troncs/branches quasi-noirs.
     if (maxChannel < 0.18) {
       // Brunâtre (tronc) -> bois chaud ; sinon -> feuillage sombre lisible.
       const brownish = tuned.color.r >= tuned.color.b;
       tuned.color.setHex(brownish ? 0x4a3526 : 0x274d2e);
-    } else if (tuned.color.g >= tuned.color.r && tuned.color.g >= tuned.color.b) {
+    } else if (mode === "westVegetation" && tuned.color.g >= tuned.color.r && tuned.color.g >= tuned.color.b) {
       tuned.color.lerp(new THREE.Color(0x67a85a), 0.22);
     }
   }
@@ -325,8 +329,8 @@ function tuneWestVegetationMaterial(material: THREE.Material): THREE.Material {
   if (tuned instanceof THREE.MeshStandardMaterial) {
     tuned.metalness = 0;
     tuned.roughness = Math.max(tuned.roughness, 0.82);
-    tuned.emissive.setHex(0x152a17);
-    tuned.emissiveIntensity = Math.max(tuned.emissiveIntensity, 0.06);
+    tuned.emissive.setHex(mode === "maidoYellowFlower" ? 0x4a3400 : 0x152a17);
+    tuned.emissiveIntensity = Math.max(tuned.emissiveIntensity, mode === "maidoYellowFlower" ? 0.1 : 0.06);
   }
 
   tuned.needsUpdate = true;

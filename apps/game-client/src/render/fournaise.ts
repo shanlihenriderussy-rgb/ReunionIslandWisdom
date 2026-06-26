@@ -62,6 +62,10 @@ const craterFloorColor = 0x3a1e16;
 type LavaFx = { mesh: THREE.Mesh; baseOpacity: number };
 const lavaFx: LavaFx[] = [];
 
+// Lumieres chaudes locales du cratere (B2 : lumiere dramatique). Pulsent avec la lave.
+type LavaLight = { light: THREE.PointLight; base: number };
+const lavaLights: LavaLight[] = [];
+
 // Appele chaque frame : fait respirer la nappe de lave sans recompiler de shader.
 export function updateFournaiseFx(elapsedSeconds: number): void {
   for (const fx of lavaFx) {
@@ -69,6 +73,10 @@ export function updateFournaiseFx(elapsedSeconds: number): void {
     if (material instanceof THREE.MeshBasicMaterial) {
       material.opacity = fx.baseOpacity * (0.8 + 0.2 * Math.sin(elapsedSeconds * 3.9));
     }
+  }
+  const lightPulse = 0.82 + 0.18 * Math.sin(elapsedSeconds * 3.2);
+  for (const fx of lavaLights) {
+    fx.light.intensity = fx.base * lightPulse;
   }
 }
 
@@ -86,6 +94,7 @@ export function addFournaiseBlockout(scene: THREE.Scene): void {
       // Reset des FX : evite d'empiler des references de lave si le blockout est rebati
       // (sinon updateFournaiseFx anime des meshes orphelins -> fuite memoire).
       lavaFx.length = 0;
+      lavaLights.length = 0;
 
       // 1) Anneau de rochers de basalte autour du rebord du cratere.
       for (let i = 0; i < RIM_ROCK_COUNT; i += 1) {
@@ -137,6 +146,27 @@ export function addFournaiseBlockout(scene: THREE.Scene): void {
 
       // 3b) Fond du cratere Dolomieu : roche sombre + nappe de lave endormie (lueur animee).
       group.add(makeCraterGlow(CRATER_CENTER.x, CRATER_CENTER.y, terrain));
+
+      // 3c) Veines de lave incandescentes entre les rochers (signature champ de lave B2).
+      const crng = mulberry32(0x51a3c7);
+      for (let i = 0; i < 12; i += 1) {
+        const a = crng() * Math.PI * 2;
+        const r = RIM_RADIUS * (0.5 + crng() * 1.7);
+        const x = CRATER_CENTER.x + Math.cos(a) * r;
+        const z = CRATER_CENTER.y + Math.sin(a) * r;
+        if (Math.hypot(x - CRATER_CENTER.x, z - CRATER_CENTER.y) < RIM_RADIUS * 0.5) {
+          continue;
+        }
+        const len = 0.9 + crng() * 2.2;
+        const width = 0.12 + crng() * 0.18;
+        group.add(makeLavaCrack(x, z, terrain, len, width, crng() * Math.PI));
+      }
+
+      // 3d) Orgues basaltiques : cluster lisible au nord-est du rebord (signature B2 panneau 6).
+      group.add(makeBasaltColumns(CRATER_CENTER.x + 6.6, CRATER_CENTER.y + 5.2, terrain));
+
+      // 3e) Lumiere chaude dramatique du cratere (B2), portee bornee a la cuvette.
+      group.add(makeCraterLight(CRATER_CENTER.x, CRATER_CENTER.y, terrain));
 
       // 4) Reperes d'objectif (volumes lisibles, lies au HUD).
       // Obj 1 : rebord Dolomieu (= spawn).
@@ -241,6 +271,70 @@ function makeCraterGlow(x: number, z: number, terrain: TerrainCollisionData): TH
 
   g.position.set(x, sampleHeight(terrain, x, z), z);
   return g;
+}
+
+// Veine de lave : fine barre emissive posee au sol (additive), animee avec la lave.
+function makeLavaCrack(
+  x: number,
+  z: number,
+  terrain: TerrainCollisionData,
+  len: number,
+  width: number,
+  angle: number
+): THREE.Mesh {
+  const mat = new THREE.MeshBasicMaterial({
+    color: lavaGlow,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(len, 0.05, width), mat);
+  mesh.rotation.y = angle;
+  mesh.position.set(x, sampleHeight(terrain, x, z) + 0.04, z);
+  mesh.renderOrder = 2;
+  mesh.name = "FournaiseLavaCrack";
+  lavaFx.push({ mesh, baseOpacity: 0.55 });
+  return mesh;
+}
+
+// Orgues basaltiques : grappe de colonnes hexagonales (signature volcan B2).
+function makeBasaltColumns(x: number, z: number, terrain: TerrainCollisionData): THREE.Group {
+  const g = new THREE.Group();
+  g.name = "FournaiseBasaltColumns";
+  const count = 7;
+  for (let i = 0; i < count; i += 1) {
+    const cx = (hash01(i * 4.1) - 0.5) * 2.8;
+    const cz = (hash01(i * 8.3) - 0.5) * 2.8;
+    const h = 1.4 + hash01(i * 2.7) * 2.6;
+    const r = 0.34 + hash01(i * 5.9) * 0.16;
+    const column = new THREE.Mesh(
+      new THREE.CylinderGeometry(r, r * 1.05, h, 6),
+      new THREE.MeshStandardMaterial({
+        color: i % 4 === 0 ? basaltMid : basaltDark,
+        roughness: 0.96,
+        metalness: 0.03,
+        flatShading: true
+      })
+    );
+    column.position.set(cx, h * 0.5, cz);
+    column.rotation.y = hash01(i * 1.3) * 0.6;
+    column.castShadow = true;
+    column.receiveShadow = true;
+    g.add(column);
+  }
+  g.position.set(x, sampleHeight(terrain, x, z), z);
+  return g;
+}
+
+// Lumiere chaude du cratere (B2 : lumiere dramatique), portee bornee a la cuvette.
+function makeCraterLight(x: number, z: number, terrain: TerrainCollisionData): THREE.PointLight {
+  const base = 6;
+  const light = new THREE.PointLight(lavaGlow, base, 18, 2);
+  light.position.set(x, sampleHeight(terrain, x, z) + 1.4, z);
+  light.name = "FournaiseCraterLight";
+  lavaLights.push({ light, base });
+  return light;
 }
 
 function makeConeMarker(x: number, z: number, terrain: TerrainCollisionData): THREE.Group {

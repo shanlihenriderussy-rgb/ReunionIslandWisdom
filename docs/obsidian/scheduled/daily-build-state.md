@@ -4,9 +4,18 @@ Cycle : 1 phase par jour. DEV -> TEST -> FIX -> chantier suivant.
 
 ## Etat courant
 
-- phase: DEV
+- phase: TEST
 - chantier: equipment
 - prochain_chantier: game-logic
+
+## Feature livree (a tester au prochain run TEST)
+
+- equipment : catalogue d'objets structure cote data/serveur.
+  - `packages/shared/src/protocol.ts` : `itemDefinitionSchema` (Zod) + `itemCatalogSchema` + `superRefine` (equipement -> slot != "aucun" ; non empilable -> maxStack 1). Types `ItemDefinition` / `ItemCategory` / `EquipmentSlot`.
+  - `packages/content/data/item-catalog.json` : 20 objets (id, name, category, slot, stackable, maxStack, weight, description) couvrant chaque id de `items.json`.
+  - `packages/content/src/index.ts` : export `itemCatalog` type `ItemDefinition[]`.
+  - `packages/content/scripts/validate-content.ts` : parse Zod du catalogue + integrite items.json<->catalogue (inclusion + completude) + unicite ids.
+  - A verifier au TEST : `corepack pnpm --filter @riw/shared typecheck`, `corepack pnpm --filter @riw/content typecheck` (lance `validate:content`), `corepack pnpm typecheck` + `lint` sous Windows.
 
 ## Politique de validation (sandbox)
 
@@ -71,6 +80,7 @@ Cycle : 1 phase par jour. DEV -> TEST -> FIX -> chantier suivant.
 - 2026-06-26 05:56 — FIX bug sweep (tous types) : (1) `GameApp.resize` garde `width/height <= 0` (aspect NaN/Infinity -> projection corrompue) ; (2) `fournaise.ts` reset `lavaFx` au build (fuite/refs periimees, cohérent avec `waterFx`). Audit serveur (Zod/cooldowns/distance/sanitize) + client (XSS textContent, NetworkClient, collision, players, InputController) : sains. Windows : typecheck OK, lint OK, build OK. Cf. [[../iterations/2026-06-26-bug-sweep]].
 - 2026-06-26 10:58 — FIX gameplay interaction : `E`/bouton action ouvre un dialogue local immediat via `NetworkClient.openLocalDialogue`, puis conserve `sendInteract` serveur. Typecheck OK, lint OK, build OK. Playtest Edge offline : desktop `E` OK, mobile bouton OK. Dette : dialogue mobile trop haut + progression quete encore cote HUD. Cf. [[../iterations/2026-06-26-interaction-e-fallback]].
 - 2026-06-26 11:22 — FIX online interaction : serveur Colyseus repasse par `Server.listen()` officiel + health Express ; client normalise la reservation Colyseus 0.17 pour `colyseus.js@0.16`. Validation Chrome CDP : `En ligne - 6`, prompt `E Parler a Tatie Snack`, touche `E` -> dialogue `Tatie Snack`. Typecheck/lint client+serveur OK. Cf. [[../iterations/2026-06-26-interaction-e-fallback]].
+- 2026-06-26 22:31 — DEV equipment : catalogue d'objets structure (`item-catalog.json`, 20 objets) + schema Zod partage `itemDefinitionSchema`/`itemCatalogSchema` (`protocol.ts`) + export `itemCatalog` + validation content (Zod + integrite + completude + unicite). Donnees pures, zero impact client/serveur runtime. Sanity Zod sandbox (zod 4.4.3 reel) : 20 objets parses, integrite/unicite OK. Typecheck isole du bloc schema (tsc 6.0.3 reel, strict) : 0 erreur. tsc projet complet bloque par troncature du mount Linux (lag connu) -> a relancer sous Windows. Round-robin reste equipment (phase TEST demain). Phase suivante : TEST. Cf. [[../iterations/2026-06-26-equipment-item-catalog]].
 
 ## Validation distribution 2026-06-25 03:19
 

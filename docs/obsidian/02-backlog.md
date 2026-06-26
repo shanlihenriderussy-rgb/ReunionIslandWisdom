@@ -54,7 +54,9 @@ Grille et process : voir [[03-playtests]]. Detail par bug : [[_templates/bug]].
 - [ ] Ajouter un feedback "hors ligne - progression non sauvegardee" quand un dialogue local s'ouvre sans serveur.
 - [ ] Ajouter un choix simple dans le premier dialogue avant validation objectif.
 - [ ] Ajouter quete "Bouchon Route du Littoral".
-- [ ] Ajouter inventaire serveur.
+- [x] Definir le modele de donnees objets (catalogue structure `item-catalog.json` + `itemDefinitionSchema` Zod partage). Voir [[iterations/2026-06-26-equipment-item-catalog]].
+- [ ] Ajouter inventaire serveur (etat joueur : objets possedes + equipes, Zod, authoritative).
+- [ ] Relier `rewardTitle` des quetes a un id du catalogue (recompense -> objet).
 - [ ] Ajouter emotes.
 
 ## Tech

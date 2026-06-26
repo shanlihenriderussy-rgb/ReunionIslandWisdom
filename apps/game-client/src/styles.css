@@ -686,9 +686,28 @@ button {
 
 /* Individual premium panel sizes */
 .hud-dialogue-panel {
-  flex: 1.2;
-  max-width: 420px;
-  min-height: 195px;
+  flex: 0 1 560px;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, calc(100vw - 32px));
+  max-width: min(560px, calc(100vw - 32px));
+  min-width: 320px;
+  min-height: 0;
+  margin: 0 var(--s-4) var(--s-3);
+  overflow: hidden;
+}
+
+.hud-dialogue-panel .hud-panel-title {
+  flex: none;
+  margin-bottom: 0;
+}
+
+.hud-dialogue-panel .riw-dialogue {
+  flex: 1 1 auto;
+}
+
+.hud-dialogue-panel .riw-dialogue__top > div:last-child {
+  min-width: 0;
 }
 
 .hud-inventory-panel {
@@ -1396,6 +1415,30 @@ button {
     max-height: 128px;
     justify-content: center;
     overflow: visible;
+  }
+
+  .hud-dialogue-panel {
+    width: min(360px, calc(100vw - 20px));
+    max-width: min(360px, calc(100vw - 20px));
+    min-width: 0;
+    margin: 0 10px 8px;
+  }
+
+  .hud-dialogue-panel .riw-dialogue {
+    padding: var(--s-3);
+  }
+
+  .hud-dialogue-panel .riw-dialogue__top {
+    gap: var(--s-2);
+  }
+
+  .hud-dialogue-panel .riw-portrait {
+    width: 52px;
+    height: 52px;
+  }
+
+  .hud-dialogue-panel .riw-dialogue__line {
+    font-size: var(--t-14);
   }
 
   .hud-right-wrapper {

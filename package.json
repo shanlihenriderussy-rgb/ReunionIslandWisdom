@@ -9,6 +9,7 @@
     "dev:server": "corepack pnpm --filter @riw/game-server dev",
     "terrain:dem": "node tools/build-lareunion-dem-terrain.mjs",
     "terrain:stl": "node tools/build-lareunion-relief-map.mjs",
+    "validate:content": "corepack pnpm --filter @riw/content validate:content",
     "build": "corepack pnpm -r build",
     "lint": "corepack pnpm -r lint",
     "typecheck": "corepack pnpm -r typecheck",

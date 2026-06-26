@@ -19,6 +19,12 @@ type TerrainCollisionData = {
 
 export type RuntimeCollider = { kind: "circle"; x: number; z: number; radius: number };
 
+type VegetationBatch = {
+  url: string;
+  materialMode: "westVegetation" | "maidoYellowFlower";
+  specs: GltfInstanceSpec[];
+};
+
 // Niveau mer (coherent world.ts) : on ne pose rien sous cette hauteur de terrain.
 const MIN_GROUND_Y = -0.2;
 // Pente max marchable pour poser un prop (rejette falaises verticales).
@@ -48,14 +54,19 @@ export function addWestVegetation(
 
       // 1) Filtrage + colliders (donnees, pas de draw call).
       // 2) Regroupement par URL : 1 GLB -> N InstancedMesh au lieu de N props.
-      const specsByUrl = new Map<string, GltfInstanceSpec[]>();
+      const batches = new Map<string, VegetationBatch>();
       for (const cand of generateWestVegetation()) {
         if (!accept(cand, terrain)) {
           continue;
         }
-        const specs = specsByUrl.get(cand.url) ?? [];
-        specs.push(instanceSpecFor(cand, terrain));
-        specsByUrl.set(cand.url, specs);
+        const materialMode = cand.appearance === "maidoYellowFlower" ? "maidoYellowFlower" : "westVegetation";
+        const batchKey = `${materialMode}:${cand.url}`;
+        let batch = batches.get(batchKey);
+        if (!batch) {
+          batch = { url: cand.url, materialMode, specs: [] };
+          batches.set(batchKey, batch);
+        }
+        batch.specs.push(instanceSpecFor(cand, terrain));
         if (cand.colliderRadius > 0) {
           colliders.push({ kind: "circle", x: cand.x, z: cand.z, radius: cand.colliderRadius });
         }
@@ -66,9 +77,9 @@ export function addWestVegetation(
       onColliders?.(colliders);
 
       // Pose instanciee (asynchrone par GLB) : ajoute les InstancedMesh au fur et a mesure.
-      for (const [url, specs] of specsByUrl) {
-        void buildGltfInstances(url, specs, {
-          materialMode: "westVegetation",
+      for (const batch of batches.values()) {
+        void buildGltfInstances(batch.url, batch.specs, {
+          materialMode: batch.materialMode,
           castShadow: true,
           receiveShadow: true
         })
@@ -78,7 +89,7 @@ export function addWestVegetation(
             }
           })
           .catch((error: unknown) => {
-            console.warn(`West vegetation instancing failed: ${url}`, error);
+            console.warn(`West vegetation instancing failed: ${batch.url}`, error);
           });
       }
     })

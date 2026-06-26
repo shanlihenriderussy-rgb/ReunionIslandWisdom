@@ -452,3 +452,40 @@ Dette / suite :
 > ATTENTION COORDINATION (2026-06-26) : un agent Codex editait le repo en parallele dans la direction
 > INVERSE (garder le depart Ouest, corriger le spawn Ouest sous l'eau, reajuster l'objectif Tatie).
 > Risque de clobber mutuel sur `ReunionWorldRoom.ts`, `GameApp.ts`, `hud.ts`. Choisir UNE direction avant de continuer.
+
+## ADR-014 - Modele de donnees objets : catalogue structure + schema Zod partage
+
+Date : 2026-06-26
+Statut : accepte (run quotidien, chantier equipment), data-only, typecheck isole vert.
+
+Contexte :
+
+- `items.json` n'etait qu'une liste de 20 IDs plats : pas de nom, type, slot, poids.
+- Il manque une fondation data pour l'inventaire / l'equipement avant tout gameplay serveur.
+
+Decision :
+
+- Garder `items.json` comme registre canonique des IDs.
+- Ajouter par-dessus un catalogue structure `packages/content/data/item-catalog.json`
+  (relation analogue a PNJ -> zones : metadata referencant un id existant).
+- Definir la source de verite dans `@riw/shared` (`itemDefinitionSchema` Zod) -> partagee client + serveur,
+  pas de duplication de types.
+- Categories : `consommable | equipement | ressource | cle | instrument`.
+  Slots : `tete | corps | pieds | accessoire | main | aucun`.
+- Invariants encodes dans le schema (`superRefine`) : un `equipement` a un slot != `aucun` ;
+  un objet non empilable a `maxStack = 1`.
+- `validate-content.ts` garantit : parse Zod + inclusion + completude (chaque id de `items.json` a une definition) + unicite.
+
+Consequences :
+
+- Aucune logique runtime ajoutee : pure couche data. L'inventaire joueur (etat, equiper/utiliser, recompenses)
+  reste a faire au chantier `game-logic`, cote serveur authoritative.
+- `rewardTitle` des quetes reste une string libre, a relier plus tard a un id du catalogue.
+- Le mapping category/slot est un premier jet, a reequilibrer quand le gameplay d'equipement existera.
+
+Validation :
+
+- Sanity Zod (zod 4.4.3 reel) : 20 objets parses, integrite/unicite OK, contraintes `superRefine` satisfaites.
+- Typecheck isole du bloc schema (tsc 6.0.3, strict) : 0 erreur.
+- tsc projet complet a relancer sous Windows (mount Linux tronque `protocol.ts` en sandbox).
+- Detail : [[iterations/2026-06-26-equipment-item-catalog]].

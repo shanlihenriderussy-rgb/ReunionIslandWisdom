@@ -64,6 +64,62 @@ export type PlayerSnapshotDto = z.infer<typeof playerSnapshotSchema>;
 export type ChatEntryDto = z.infer<typeof chatEntrySchema>;
 export type ServerSnapshot = z.infer<typeof serverSnapshotSchema>;
 
+// --- Equipement / inventaire (data cote serveur) ---
+// Source de verite partagee client/serveur pour les definitions d'objets.
+
+export const itemCategorySchema = z.enum([
+  "consommable",
+  "equipement",
+  "ressource",
+  "cle",
+  "instrument"
+]);
+
+export const equipmentSlotSchema = z.enum([
+  "tete",
+  "corps",
+  "pieds",
+  "accessoire",
+  "main",
+  "aucun"
+]);
+
+export const itemDefinitionSchema = z
+  .object({
+    id: z.string().min(1).max(60),
+    name: z.string().min(1).max(60),
+    category: itemCategorySchema,
+    slot: equipmentSlotSchema,
+    stackable: z.boolean(),
+    maxStack: z.number().int().min(1).max(999),
+    weight: z.number().min(0).max(100),
+    description: z.string().min(1).max(200)
+  })
+  .superRefine((item, ctx) => {
+    // Un objet equipable a un slot reel ; les autres restent "aucun".
+    if (item.category === "equipement" && item.slot === "aucun") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `L'objet equipement "${item.id}" doit avoir un slot different de "aucun".`,
+        path: ["slot"]
+      });
+    }
+    // Coherence du stack : non empilable => maxStack 1.
+    if (!item.stackable && item.maxStack !== 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `L'objet non empilable "${item.id}" doit avoir maxStack = 1.`,
+        path: ["maxStack"]
+      });
+    }
+  });
+
+export const itemCatalogSchema = z.array(itemDefinitionSchema);
+
+export type ItemCategory = z.infer<typeof itemCategorySchema>;
+export type EquipmentSlot = z.infer<typeof equipmentSlotSchema>;
+export type ItemDefinition = z.infer<typeof itemDefinitionSchema>;
+
 export const serverTickRate = 20;
 export const playerMoveSpeed = 5.2;
 export const npcInteractionDistance = 3.2;

@@ -11,6 +11,7 @@ import { WEST_BLOCKOUT_PATH, WEST_BLOCKOUT_BOUNDARY_MARKERS } from "./westBlocko
 export type VegCandidate = {
   id: string;
   url: string;
+  appearance?: "maidoYellowFlower";
   x: number;
   z: number;
   height: number; // hauteur cible du modele (unites monde)
@@ -31,6 +32,14 @@ type Species = {
 
 type SpeciesKey = keyof typeof SPECIES;
 type VegetationBand = "coast" | "maidoMid" | "maidoRim";
+type MaidoReferencePatch = {
+  key: "maidoConifer" | "uplandBush" | "maidoYellowFlower";
+  x: number;
+  z: number;
+  height?: number;
+  pathClearance: number;
+  url?: string;
+};
 
 const SPECIES = {
   // Canopee : grands palmiers/arbres. Tronc fin -> collider serre.
@@ -88,6 +97,14 @@ const SPECIES = {
     collider: 0.28,
     pathClearance: 1.45
   },
+  // Sapins / cryptomerias stylises : assets coniferes Kenney, reserves aux hauts du Maido.
+  maidoConifer: {
+    urls: [kenneyAssets.survival.treeTall, kenneyAssets.survival.tree],
+    minH: 2.9,
+    maxH: 4.8,
+    collider: 0.3,
+    pathClearance: 1.75
+  },
   uplandBush: {
     urls: [kenneyAssets.nature.plantBush, kenneyAssets.nature.plantBushLarge],
     minH: 0.8,
@@ -101,6 +118,13 @@ const SPECIES = {
     maxH: 0.86,
     collider: 0.12,
     pathClearance: 0.72
+  },
+  maidoYellowFlower: {
+    urls: [kenneyAssets.nature.flowerRedA],
+    minH: 0.42,
+    maxH: 0.72,
+    collider: 0,
+    pathClearance: 0.62
   },
   uplandRock: {
     urls: [
@@ -167,16 +191,16 @@ function pickSpeciesKey(rng: () => number, band: VegetationBand, nearPath: boole
 
   if (band === "maidoRim") {
     if (nearPath) {
-      return roll < 0.58 ? "uplandGround" : roll < 0.88 ? "uplandBush" : "uplandRock";
+      return roll < 0.34 ? "maidoYellowFlower" : roll < 0.62 ? "uplandGround" : roll < 0.86 ? "uplandBush" : "uplandRock";
     }
-    return roll < 0.34 ? "uplandBush" : roll < 0.62 ? "uplandRock" : roll < 0.82 ? "uplandGround" : "uplandTree";
+    return roll < 0.24 ? "maidoConifer" : roll < 0.44 ? "uplandTree" : roll < 0.62 ? "uplandBush" : roll < 0.78 ? "uplandRock" : roll < 0.9 ? "maidoYellowFlower" : "uplandGround";
   }
 
   if (band === "maidoMid") {
     if (nearPath) {
-      return roll < 0.48 ? "uplandGround" : roll < 0.82 ? "uplandBush" : "uplandRock";
+      return roll < 0.18 ? "maidoYellowFlower" : roll < 0.5 ? "uplandGround" : roll < 0.82 ? "uplandBush" : "uplandRock";
     }
-    return roll < 0.34 ? "uplandBush" : roll < 0.56 ? "uplandTree" : roll < 0.82 ? "uplandRock" : "uplandGround";
+    return roll < 0.2 ? "maidoConifer" : roll < 0.38 ? "uplandBush" : roll < 0.6 ? "uplandTree" : roll < 0.8 ? "uplandRock" : "uplandGround";
   }
 
   if (nearPath) {
@@ -219,18 +243,17 @@ export function generateWestVegetation(seed: number = WEST_VEGETATION_SEED): Veg
       const baseZ = a.z + dz * t;
       const band = getVegetationBand(baseX, baseZ);
 
-      // Densite reduite cote Maido : la jungle devenait un mur illisible (cf. capture 2026-06-06).
-      // On saute ~50 % des samples sur le rebord Maido, ~25 % a mi-pente.
-      if (band === "maidoRim" && rng() < 0.5) {
+      // Densite controlee cote Maido : plus fournie que la cote, sans mur qui bouche la vue.
+      if (band === "maidoRim" && rng() < 0.28) {
         continue;
       }
-      if (band === "maidoMid" && rng() < 0.25) {
+      if (band === "maidoMid" && rng() < 0.15) {
         continue;
       }
 
       // Deux cotes du chemin, densite luxuriante => 1 a 2 props par cote et par sample.
       for (const side of [-1, 1] as const) {
-        const clusterCount = band === "maidoRim" ? 1 : 1 + Math.floor(rng() * 2);
+        const clusterCount = band === "maidoRim" ? 1 + Math.floor(rng() * 1.6) : 1 + Math.floor(rng() * 2);
         for (let c = 0; c < clusterCount; c += 1) {
           const offset = lerp(SIDE_OFFSET_MIN, SIDE_OFFSET_MAX, rng() * rng());
           const jitterX = (rng() - 0.5) * 1.6;
@@ -243,7 +266,7 @@ export function generateWestVegetation(seed: number = WEST_VEGETATION_SEED): Veg
           const key = pickSpeciesKey(rng, band, near);
           const sp = SPECIES[key];
           counter += 1;
-          out.push({
+          const candidate: VegCandidate = {
             id: `westveg-${key}-${counter}`,
             url: key === "canopy" ? pickCanopyUrl(rng) : pick(rng, sp.urls),
             x: Number(x.toFixed(2)),
@@ -252,10 +275,32 @@ export function generateWestVegetation(seed: number = WEST_VEGETATION_SEED): Veg
             rot: Number((rng() * Math.PI * 2).toFixed(3)),
             colliderRadius: sp.collider,
             pathClearance: sp.pathClearance
-          });
+          };
+          if (key === "maidoYellowFlower") {
+            candidate.appearance = "maidoYellowFlower";
+          }
+          out.push(candidate);
         }
       }
     }
+  }
+
+  for (const patch of MAIDO_REFERENCE_PATCHES) {
+    counter += 1;
+    const candidate: VegCandidate = {
+      id: `westveg-${patch.key}-${counter}`,
+      url: patch.url ?? pick(rng, SPECIES[patch.key].urls),
+      x: patch.x,
+      z: patch.z,
+      height: patch.height ?? Number(lerp(SPECIES[patch.key].minH, SPECIES[patch.key].maxH, rng()).toFixed(2)),
+      rot: Number((rng() * Math.PI * 2).toFixed(3)),
+      colliderRadius: SPECIES[patch.key].collider,
+      pathClearance: patch.pathClearance
+    };
+    if (patch.key === "maidoYellowFlower") {
+      candidate.appearance = "maidoYellowFlower";
+    }
+    out.push(candidate);
   }
 
   // Barrieres naturelles : gros rochers/falaises collisionnes sur les marqueurs de bord.
@@ -283,3 +328,18 @@ export function generateWestVegetation(seed: number = WEST_VEGETATION_SEED): Veg
 
 // Centerline du chemin, pour rejeter ce qui tomberait dans le corridor praticable.
 export const WEST_PATH_CENTERLINE = WEST_BLOCKOUT_PATH.map((p) => ({ x: p.x, z: p.z }));
+
+const MAIDO_REFERENCE_PATCHES: readonly MaidoReferencePatch[] = [
+  { key: "maidoConifer", x: -49.8, z: -7.8, height: 4.7, pathClearance: 0, url: kenneyAssets.survival.treeTall },
+  { key: "maidoConifer", x: -46.8, z: 5.8, height: 4.35, pathClearance: 0, url: kenneyAssets.survival.treeTall },
+  { key: "maidoConifer", x: -42.6, z: 12.4, height: 4.55, pathClearance: 0, url: kenneyAssets.survival.treeTall },
+  { key: "maidoConifer", x: -33.2, z: 5.2, height: 4.1, pathClearance: 0, url: kenneyAssets.survival.treeTall },
+  { key: "maidoConifer", x: -38.5, z: 13.8, height: 3.95, pathClearance: 0, url: kenneyAssets.survival.tree },
+  { key: "uplandBush", x: -45.2, z: -1.8, pathClearance: 0 },
+  { key: "uplandBush", x: -40.4, z: 8.6, pathClearance: 0 },
+  { key: "maidoYellowFlower", x: -49.2, z: -9.4, pathClearance: 0 },
+  { key: "maidoYellowFlower", x: -46.2, z: -5.6, pathClearance: 0 },
+  { key: "maidoYellowFlower", x: -43.8, z: 0.8, pathClearance: 0 },
+  { key: "maidoYellowFlower", x: -39.5, z: 7.2, pathClearance: 0 },
+  { key: "maidoYellowFlower", x: -36.8, z: 10.4, pathClearance: 0 }
+];

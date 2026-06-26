@@ -1,3 +1,22 @@
+## 2026-06-26 22:31 - Une fiche d'identite pour chaque objet du jeu
+
+En clair :
+
+- Avant, les 20 objets du jeu (barquette cari, kayamb, lampe frontale, casquette 974...) n'etaient qu'une simple liste de noms, sans details.
+- Maintenant chaque objet a une vraie fiche : son nom affiche, sa categorie (nourriture, equipement, ressource, objet de quete, instrument), l'endroit ou on le porte (tete, corps, pieds, accessoire, main), s'il s'empile ou non, son poids et une courte description.
+- Un controle automatique verifie que chaque objet de la liste a bien sa fiche, et qu'il n'y a ni doublon ni incoherence (par exemple : un objet "equipement" doit avoir un emplacement ou le porter).
+
+Impact pour le projet :
+
+- C'est la fondation de l'inventaire et de l'equipement. Sans ces fiches, impossible de ramasser, porter ou recevoir un objet en recompense.
+- Tout est range cote serveur (la partie qui fait foi), donc fiable et non trichable.
+- Rien ne change a l'ecran aujourd'hui : c'est de la preparation. La suite (ramasser/porter les objets) viendra apres.
+
+Statut :
+
+- Donnees verifiees automatiquement (20 objets, controles passes). Verification technique complete a refaire sur la machine de Shan.
+- Detail : [[iterations/2026-06-26-equipment-item-catalog]].
+
 ## 2026-06-26 11:22 - Interaction parler validee en ligne
 
 En clair :
@@ -18,6 +37,24 @@ Statut :
 - Typecheck OK. Lint OK.
 - Test navigateur Chrome headless OK.
 - Detail : [[iterations/2026-06-26-interaction-e-fallback]].
+
+## 2026-06-26 14:30 - Le volcan ressemble davantage à sa référence
+
+En clair :
+
+- On a décidé : le jeu démarre à l'Ouest (la plage), et c'est l'autre assistant (Codex) qui s'occupe de l'Ouest.
+- De mon côté, je travaille le volcan (Piton de la Fournaise) pour qu'il colle à l'image de référence : des coulées de lave qui rougeoient au sol, des colonnes de basalte (les « orgues »), et une lumière chaude près du cratère.
+- Tout est dessiné par le code (pas d'images importées), et on garde ce qui existait déjà.
+
+Impact pour le projet :
+
+- Chaque assistant a sa zone : pas de risque qu'on s'efface mutuellement le travail.
+- Le volcan gagne en ambiance, fidèle au moodboard.
+
+Statut :
+
+- Fait au niveau code (contrôles techniques verts). Pas encore vu à l'écran : le serveur du jeu était arrêté (Codex travaillait en même temps). À revoir une fois sa passe terminée.
+- Détail : [[iterations/2026-06-26-fournaise-b2-habillage]] et [[12-phase-1-level-design]].
 
 ## 2026-06-26 13:30 - Le jeu démarre maintenant sur le volcan
 

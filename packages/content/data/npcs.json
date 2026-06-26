@@ -1,0 +1,79 @@
+[
+  {
+    "id": "tatie-snack",
+    "name": "Tatie Snack",
+    "zoneId": "saint-paul-saint-gilles",
+    "position": { "x": -78.5, "y": 1.18, "z": 7.5 },
+    "line": "Prends un bouchon, puis suis le chemin Saint-Paul / Saint-Gilles : snack, Car Jaune, ravine, point de vue Maido sur Mafate."
+  },
+  {
+    "id": "guide-volcan",
+    "name": "Guide Volcan",
+    "zoneId": "saint-paul-saint-gilles",
+    "position": { "x": -56, "y": 2.76, "z": -31 },
+    "line": "Le sud mene vers la Fournaise, mais commence par passer la ravine."
+  },
+  {
+    "id": "chauffeur-car-jaune",
+    "name": "Chauffeur Car Jaune",
+    "zoneId": "saint-paul-saint-gilles",
+    "position": { "x": -70, "y": 1.16, "z": -16 },
+    "line": "Le passage est bloque plus bas. Suis les marqueurs et verifie la ravine."
+  },
+  {
+    "id": "maitre-kabar",
+    "name": "Maitre Kabar",
+    "zoneId": "saint-paul-saint-gilles",
+    "position": { "x": -82, "y": 2.04, "z": 17 },
+    "line": "Le lagon donne le rythme. Repere bien le debut du sentier."
+  },
+  {
+    "id": "agent-sentier",
+    "name": "Agent Sentier",
+    "zoneId": "saint-paul-saint-gilles",
+    "position": { "x": -58, "y": 2.35, "z": -33 },
+    "line": "Sortie sud validee. La suite devra monter vers les hauts."
+  },
+  {
+    "id": "vendeuse-marche",
+    "name": "Vendeuse Marche",
+    "zoneId": "saint-paul-saint-gilles",
+    "position": { "x": -76, "y": 1.33, "z": 3 },
+    "line": "Le chemin est encore en blockout. Note les pentes qui te genent."
+  },
+  {
+    "id": "meteore-cyclone",
+    "name": "Meteore Cyclone",
+    "zoneId": "saint-paul-saint-gilles",
+    "position": { "x": -74, "y": 0.94, "z": -8 },
+    "line": "Sur la cote ouest, le temps change vite. Garde une sortie lisible."
+  },
+  {
+    "id": "gardien-ravine",
+    "name": "Gardien Ravine",
+    "zoneId": "saint-paul-saint-gilles",
+    "position": { "x": -64, "y": 2.18, "z": -25 },
+    "line": "Une ravine, ca se respecte. Le joueur doit comprendre ou ne pas aller."
+  },
+  {
+    "id": "danseuse-maloya",
+    "name": "Danseuse Maloya",
+    "zoneId": "saint-paul-saint-gilles",
+    "position": { "x": -80, "y": 2.31, "z": 19 },
+    "line": "Le belvedere doit respirer. Pas trop de props, juste le bon rythme."
+  },
+  {
+    "id": "ancien-volcan",
+    "name": "Ancien Volcan",
+    "zoneId": "saint-paul-saint-gilles",
+    "position": { "x": -55, "y": 3.24, "z": -28 },
+    "line": "Au-dela, on preparera la transition vers les hauts et le volcan."
+  },
+  {
+    "id": "guide-maido",
+    "name": "Guide Maido",
+    "zoneId": "saint-paul-saint-gilles",
+    "position": { "x": -36, "y": 9.86, "z": 8 },
+    "line": "Regarde en face : c'est Mafate. Le chemin doit donner cette sensation de rempart."
+  }
+]
