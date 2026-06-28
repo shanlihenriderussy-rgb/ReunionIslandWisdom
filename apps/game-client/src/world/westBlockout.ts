@@ -14,6 +14,20 @@ export type BlockoutCollider = {
   x: number;
   z: number;
   radius: number;
+  climbableTopY?: number;
+};
+
+export type BlockoutWalkableSurface = {
+  kind: "rect";
+  id: string;
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+  yaw: number;
+  topY: number;
+  blocksSides?: boolean;
+  stepUp?: number;
 };
 
 export const WEST_BLOCKOUT_SPAWN = {
@@ -64,12 +78,46 @@ export const WEST_BLOCKOUT_BOUNDARY_MARKERS = [
   { id: "ridge-rock-02", label: "Montee hauts", x: -55, z: -35, color: 0x6d6a5d }
 ] as const satisfies readonly BlockoutMarker[];
 
-export const WEST_BLOCKOUT_COLLIDERS = WEST_BLOCKOUT_BOUNDARY_MARKERS.map((marker) => ({
-  kind: "circle",
-  x: marker.x,
-  z: marker.z,
-  radius: 1.05
-})) satisfies BlockoutCollider[];
+export const WEST_BLOCKOUT_COLLIDERS = [] satisfies BlockoutCollider[];
+
+export const WEST_BLOCKOUT_WALKABLE_SURFACES = [
+  {
+    kind: "rect",
+    id: "west-spawn-upper-slab",
+    x: -72.8,
+    z: 2.2,
+    width: 15.8,
+    depth: 14.5,
+    yaw: -0.36,
+    topY: 0.86,
+    blocksSides: true,
+    stepUp: 0.72
+  },
+  {
+    kind: "rect",
+    id: "west-spawn-lower-slab",
+    x: -80.2,
+    z: 7.1,
+    width: 7.5,
+    depth: 6.2,
+    yaw: -0.34,
+    topY: 0.64,
+    blocksSides: true,
+    stepUp: 0.72
+  },
+  {
+    kind: "rect",
+    id: "west-snack-ravine-slab",
+    x: -67.2,
+    z: -8.7,
+    width: 10.5,
+    depth: 9.2,
+    yaw: -0.31,
+    topY: 0.78,
+    blocksSides: true,
+    stepUp: 0.72
+  }
+] as const satisfies readonly BlockoutWalkableSurface[];
 
 // --- Progression le long du sentier ouest (pur, sans rendu ni DOM) ---
 // Base pour la boucle exploration et l'affichage "lieu actuel".

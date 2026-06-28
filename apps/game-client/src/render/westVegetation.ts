@@ -33,7 +33,14 @@ type ChunkManifestData = {
   chunks?: Array<{ heightfield?: string }>;
 };
 
-export type RuntimeCollider = { kind: "circle"; x: number; z: number; radius: number };
+export type RuntimeCollider = {
+  kind: "circle";
+  x: number;
+  z: number;
+  radius: number;
+  climbableTopY?: number;
+  stepUp?: number;
+};
 
 type VegetationBatch = {
   url: string;
@@ -88,9 +95,17 @@ export function addWestVegetation(
           batch = { url: cand.url, materialMode, specs: [] };
           batches.set(batchKey, batch);
         }
-        batch.specs.push(instanceSpecFor(cand, terrain, chunks));
+        const spec = instanceSpecFor(cand, terrain, chunks);
+        batch.specs.push(spec);
         if (cand.colliderRadius > 0) {
-          colliders.push({ kind: "circle", x: cand.x, z: cand.z, radius: cand.colliderRadius });
+          const climbableTopY = climbableTopFor(cand, spec.position.y);
+          colliders.push({
+            kind: "circle",
+            x: cand.x,
+            z: cand.z,
+            radius: cand.colliderRadius,
+            ...(climbableTopY === null ? {} : { climbableTopY, stepUp: 0.72 })
+          });
         }
       }
 
@@ -173,6 +188,13 @@ function maxTiltForCandidate(cand: VegCandidate): number {
     return 0.28;
   }
   return 0.12;
+}
+
+function climbableTopFor(cand: VegCandidate, baseY: number): number | null {
+  if (!cand.id.includes("rock") && !cand.id.includes("barrier")) {
+    return null;
+  }
+  return baseY + Math.min(0.62, Math.max(0.34, cand.height * 0.42));
 }
 
 function terrainTiltQuaternion(

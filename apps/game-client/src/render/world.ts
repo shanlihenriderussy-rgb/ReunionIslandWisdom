@@ -1,17 +1,19 @@
 import * as THREE from "three";
 import { terrainAssets } from "@riw/assets";
-import { WORLD_BIOMES } from "../world/biomes";
+import { WORLD_BIOMES, type BiomeId } from "../world/biomes";
 import { loadGltfGroup } from "./gltf";
 import { addWestBlockout } from "./westBlockout";
 import { addWestMoodboardScenic } from "./westScenic";
 import { addWestVegetation, type RuntimeCollider } from "./westVegetation";
 import { addFournaiseBlockout } from "./fournaise";
 import { addMafateHighlandAtmosphere } from "./mafateAtmosphere";
+import { addEmbarcadere, type WalkableSurfaceSink } from "./embarcadere";
+import { addIslandBiomeBlockouts, type BiomeScenicMode } from "./biomeScenic";
 
 // Callback de remontee des colliders props generes (vers WorldCollision).
 export type ColliderSink = (colliders: readonly RuntimeCollider[]) => void;
 
-type ZoneVisualMode = "west" | "fournaise" | "all";
+type ZoneVisualMode = "west" | "fournaise" | "all" | BiomeId;
 type WorldLightingRefs = {
   hemi?: THREE.HemisphereLight;
   sun?: THREE.DirectionalLight;
@@ -22,7 +24,11 @@ const seaLevel = -0.38;
 const beachY = 0.055;
 const worldLighting: WorldLightingRefs = {};
 
-export function configureWorld(scene: THREE.Scene, onColliders: ColliderSink = () => {}): void {
+export function configureWorld(
+  scene: THREE.Scene,
+  onColliders: ColliderSink = () => {},
+  onWalkableSurfaces: WalkableSurfaceSink = () => {}
+): void {
   const visualMode = getZoneVisualMode();
 
   // Palette DA : voir docs/obsidian/09-direction-artistique.md
@@ -65,14 +71,19 @@ export function configureWorld(scene: THREE.Scene, onColliders: ColliderSink = (
   scene.add(ocean);
 
   addLaReunionVectorMap(scene);
+  // Embarcadere generique ancre au littoral est (independant du mode de zone).
+  addEmbarcadere(scene, onWalkableSurfaces);
   if (visualMode === "west" || visualMode === "all") {
     addWestBlockout(scene);
     // Decor non-prop conserve : snack, panneaux, lagon, ecume, nuages.
-    addWestMoodboardScenic(scene);
+    addWestMoodboardScenic(scene, onColliders, onWalkableSurfaces);
     // Vegetation luxuriante generee (seedee, ancree sol, corridor chemin, colliders serres).
     // Remplace l'ancien semis worldObjects (supprime). Colliders remontes a la collision.
     addWestVegetation(scene, onColliders);
     addMafateHighlandAtmosphere(scene);
+  }
+  if (visualMode === "all" || isBiomeScenicMode(visualMode)) {
+    addIslandBiomeBlockouts(scene, onColliders, onWalkableSurfaces, visualMode === "all" ? "all" : visualMode);
   }
   if (visualMode === "fournaise" || visualMode === "all") {
     // Props proceduraux zone volcan. Hors build ouest par defaut pour eviter deux DA visibles.
@@ -132,10 +143,24 @@ function getMafateAtmosphereWeight(position: THREE.Vector3): number {
 function getZoneVisualMode(): ZoneVisualMode {
   const params = new URLSearchParams(window.location.search);
   const requested = params.get("visualZone");
+  if (requested === "ouest" || requested === "saint-paul-saint-gilles") {
+    return "west";
+  }
   if (requested === "fournaise" || requested === "all") {
     return requested;
   }
+  if (isBiomeId(requested)) {
+    return requested;
+  }
   return "west";
+}
+
+function isBiomeScenicMode(mode: ZoneVisualMode): mode is BiomeScenicMode {
+  return mode !== "west" && mode !== "fournaise";
+}
+
+function isBiomeId(value: string | null): value is BiomeId {
+  return WORLD_BIOMES.some((biome) => biome.id === value);
 }
 
 // Bicolore océan : lagon turquoise près de l'origine, bleu profond au large.

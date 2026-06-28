@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import { terrainAssets } from "@riw/assets";
+import type { WalkableSurface } from "../game/collision";
+import type { RuntimeCollider } from "./westVegetation";
 
 type Point2 = {
   x: number;
@@ -44,8 +46,22 @@ export function updateWestWaterFx(elapsedSeconds: number): void {
 const westShoreMinZ = -18;
 const westShoreMaxZ = 24;
 const westShoreMaxX = -70;
+const scenicSigns = [
+  { x: -77.3, z: 5.0, rot: -0.85, color: 0xf2c66d },
+  { x: -71.0, z: -14.6, rot: 0.45, color: 0xf4c430 }
+] as const;
+const scenicHouses = [
+  { x: -81.2, z: 13.2, rot: -0.5, scale: 0.72, wall: 0xf3d6ab, roof: 0xd4572f },
+  { x: -78.9, z: 11.2, rot: -0.38, scale: 0.62, wall: 0xbfe4dc, roof: 0xc0392b },
+  { x: -76.6, z: 9.1, rot: -0.3, scale: 0.54, wall: 0xf5e6d0, roof: 0xa13a1f },
+  { x: -74.2, z: 6.7, rot: -0.2, scale: 0.46, wall: 0xe9c78f, roof: 0x8e2a18 }
+] as const;
 
-export function addWestMoodboardScenic(scene: THREE.Scene): void {
+export function addWestMoodboardScenic(
+  scene: THREE.Scene,
+  onColliders: (colliders: readonly RuntimeCollider[]) => void = () => {},
+  onWalkableSurfaces: (surfaces: readonly WalkableSurface[]) => void = () => {}
+): void {
   void fetch(terrainAssets.laReunion.reliefCollision)
     .then((response) => (response.ok ? response.json() : null))
     .then((terrain: TerrainCollisionData | null) => {
@@ -71,6 +87,8 @@ export function addWestMoodboardScenic(scene: THREE.Scene): void {
         group.add(createCloudLayer());
       }
       scene.add(group);
+      onColliders(createWestScenicColliders());
+      onWalkableSurfaces(createWestScenicWalkableSurfaces());
     })
     .catch((error: unknown) => {
       console.warn("West scenic moodboard layer failed", error);
@@ -214,12 +232,8 @@ function smoothPolyline(points: readonly Point2[]): Point2[] {
 function createProceduralSigns(terrain: TerrainCollisionData): THREE.Group {
   const group = new THREE.Group();
   group.name = "ScenicWest_ProceduralSigns";
-  const signs = [
-    { x: -77.3, z: 5.0, rot: -0.85, color: 0xf2c66d },
-    { x: -71.0, z: -14.6, rot: 0.45, color: 0xf4c430 }
-  ] as const;
 
-  for (const sign of signs) {
+  for (const sign of scenicSigns) {
     const signGroup = createProceduralSign(sign.color);
     signGroup.position.set(sign.x, sampleHeight(terrain, sign.x, sign.z) + 0.06, sign.z);
     signGroup.rotation.y = sign.rot;
@@ -307,14 +321,8 @@ function createCreoleVillage(terrain: TerrainCollisionData): THREE.Group {
   const group = new THREE.Group();
   group.name = "ScenicWest_CreoleVillage";
   // Toits chauds usés (moodboard B1) : gradient tôle ondulée rouge/orange.
-  const houses = [
-    { x: -81.2, z: 13.2, rot: -0.5, scale: 0.72, wall: 0xf3d6ab, roof: 0xd4572f },
-    { x: -78.9, z: 11.2, rot: -0.38, scale: 0.62, wall: 0xbfe4dc, roof: 0xc0392b },
-    { x: -76.6, z: 9.1, rot: -0.3, scale: 0.54, wall: 0xf5e6d0, roof: 0xa13a1f },
-    { x: -74.2, z: 6.7, rot: -0.2, scale: 0.46, wall: 0xe9c78f, roof: 0x8e2a18 }
-  ] as const;
 
-  for (const house of houses) {
+  for (const house of scenicHouses) {
     const prop = createCreoleHouse(house.wall, house.roof);
     prop.position.set(house.x, sampleHeight(terrain, house.x, house.z) + 0.04, house.z);
     prop.rotation.y = house.rot;
@@ -436,6 +444,42 @@ function createFishingBoat(): THREE.Group {
 
   group.add(hull, prow, stern, trim);
   return group;
+}
+
+function createWestScenicColliders(): RuntimeCollider[] {
+  return [
+    { kind: "circle", x: -75.7, z: 4.0, radius: 1.0 },
+    ...scenicHouses.map((house) => ({
+      kind: "circle" as const,
+      x: house.x,
+      z: house.z,
+      radius: 0.58 * house.scale
+    })),
+    ...scenicSigns.map((sign) => ({
+      kind: "circle" as const,
+      x: sign.x,
+      z: sign.z,
+      radius: 0.18
+    })),
+    { kind: "circle", x: -90.6, z: 17.4, radius: 0.85 }
+  ];
+}
+
+function createWestScenicWalkableSurfaces(): WalkableSurface[] {
+  return [
+    {
+      kind: "rect",
+      id: "west-scenic-small-pier",
+      x: -91.4,
+      z: 21.72,
+      width: 0.6,
+      depth: 1.95,
+      yaw: -0.18,
+      topY: seaLevel + 0.26,
+      blocksSides: true,
+      stepUp: 0.72
+    }
+  ];
 }
 
 function createLagoonPatches(): THREE.Group {

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { terrainAssets } from "@riw/assets";
-import { isOnWestPath, WEST_BLOCKOUT_COLLIDERS } from "../world/westBlockout";
+import { isOnWestPath, WEST_BLOCKOUT_COLLIDERS, WEST_BLOCKOUT_WALKABLE_SURFACES } from "../world/westBlockout";
 
 type Point2 = {
   x: number;
@@ -43,6 +43,21 @@ type CircleCollider = {
   x: number;
   z: number;
   radius: number;
+  climbableTopY?: number;
+  stepUp?: number;
+};
+
+export type WalkableSurface = {
+  kind: "rect";
+  id?: string;
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+  yaw?: number;
+  topY: number;
+  blocksSides?: boolean;
+  stepUp?: number;
 };
 
 type MoveResolveOptions = {
@@ -69,6 +84,7 @@ export class WorldCollision {
   // Barrieres de blockout (limites de zone) + colliders props injectes au runtime
   // par le generateur de vegetation (render/westVegetation.ts).
   private readonly solids: CircleCollider[] = [...WEST_BLOCKOUT_COLLIDERS];
+  private readonly walkableSurfaces: WalkableSurface[] = [...WEST_BLOCKOUT_WALKABLE_SURFACES];
 
   constructor() {
     void this.loadTerrain();
@@ -77,6 +93,11 @@ export class WorldCollision {
   // Ingere les colliders de props generes (vegetation ouest) une fois poses au sol.
   addColliders(colliders: readonly CircleCollider[]): void {
     this.solids.push(...colliders);
+  }
+
+  // Surfaces portees par des meshes visuels : pontons, plateformes blockout.
+  addWalkableSurfaces(surfaces: readonly WalkableSurface[]): void {
+    this.walkableSurfaces.push(...surfaces);
   }
 
   resolveMove(previous: THREE.Vector3, proposed: THREE.Vector3, options: MoveResolveOptions = {}): THREE.Vector3 {
@@ -95,7 +116,7 @@ export class WorldCollision {
       }
     }
 
-    this.resolveSolidCollisions(resolved);
+    this.resolveSolidCollisions(previous, resolved, options);
     if (!this.canOccupyTerrain(previous, resolved, options)) {
       resolved.copy(previous);
     }
@@ -134,6 +155,10 @@ export class WorldCollision {
   }
 
   private isWalkable(x: number, z: number): boolean {
+    if (this.getWalkableSurfaceHeight(x, z) !== null) {
+      return true;
+    }
+
     const terrain = this.terrain;
     if (!terrain) {
       return isInsideBounds(x, z, defaultBounds);
@@ -150,17 +175,18 @@ export class WorldCollision {
     // Le heightfield devient un obstacle : on accepte les petites marches, pas les falaises.
     const previousGround = this.getGroundHeight(previous.x, previous.z);
     const candidateGround = this.getGroundHeight(candidate.x, candidate.z);
+    const stepUpLimit = this.getStepUpLimit(candidate.x, candidate.z);
     if (options.airborne) {
       const horizontalDistance = Math.hypot(candidate.x - previous.x, candidate.z - previous.z);
       if (horizontalDistance < 0.0001) {
         return true;
       }
       const currentY = options.currentY ?? candidate.y;
-      return candidateGround <= previousGround + maxGroundStepUp || currentY + airborneGroundClearance >= candidateGround;
+      return candidateGround <= previousGround + stepUpLimit || currentY + airborneGroundClearance >= candidateGround;
     }
 
     const deltaY = candidateGround - previousGround;
-    if (deltaY > maxGroundStepUp) {
+    if (deltaY > stepUpLimit) {
       return false;
     }
     if (deltaY < -maxGroundStepDown) {
@@ -170,18 +196,54 @@ export class WorldCollision {
   }
 
   private getGroundHeight(x: number, z: number): number {
+    const surfaceHeight = this.getWalkableSurfaceHeight(x, z);
     const chunkHeight = this.getChunkGroundHeight(x, z);
     if (chunkHeight !== null) {
-      return chunkHeight;
+      return surfaceHeight === null ? chunkHeight : Math.max(chunkHeight, surfaceHeight);
     }
 
     const terrain = this.terrain;
     if (!terrain) {
-      return 0;
+      return surfaceHeight ?? 0;
     }
 
     const height = sampleHeight(terrain, x, z) ?? 0;
-    return isOnWestPath(x, z, westPlayableHalfWidth) ? Math.max(height, westPlayableMinHeight) : height;
+    const terrainHeight = isOnWestPath(x, z, westPlayableHalfWidth) ? Math.max(height, westPlayableMinHeight) : height;
+    return surfaceHeight === null ? terrainHeight : Math.max(terrainHeight, surfaceHeight);
+  }
+
+  private getWalkableSurfaceHeight(x: number, z: number): number | null {
+    let topY: number | null = null;
+    for (const surface of this.walkableSurfaces) {
+      if (!pointInWalkableSurface(x, z, surface)) {
+        continue;
+      }
+      topY = topY === null ? surface.topY : Math.max(topY, surface.topY);
+    }
+    for (const solid of this.solids) {
+      if (solid.climbableTopY === undefined || !pointInClimbableCircle(x, z, solid)) {
+        continue;
+      }
+      topY = topY === null ? solid.climbableTopY : Math.max(topY, solid.climbableTopY);
+    }
+    return topY;
+  }
+
+  private getStepUpLimit(x: number, z: number): number {
+    let limit = maxGroundStepUp;
+    for (const surface of this.walkableSurfaces) {
+      if (surface.stepUp === undefined || !pointInWalkableSurface(x, z, surface)) {
+        continue;
+      }
+      limit = Math.max(limit, surface.stepUp);
+    }
+    for (const solid of this.solids) {
+      if (solid.stepUp === undefined || !pointInClimbableCircle(x, z, solid)) {
+        continue;
+      }
+      limit = Math.max(limit, solid.stepUp);
+    }
+    return limit;
   }
 
   private getChunkGroundHeight(x: number, z: number): number | null {
@@ -197,9 +259,18 @@ export class WorldCollision {
     return null;
   }
 
-  private resolveSolidCollisions(position: THREE.Vector3): void {
+  private resolveSolidCollisions(previous: THREE.Vector3, position: THREE.Vector3, options: MoveResolveOptions): void {
     for (let pass = 0; pass < 4; pass += 1) {
+      for (const surface of this.walkableSurfaces) {
+        if (!surface.blocksSides || canClimbSurface(previous, position, surface, options, this.canOccupyTerrain.bind(this))) {
+          continue;
+        }
+        resolveWalkableRectSide(position, surface);
+      }
       for (const solid of this.solids) {
+        if (solid.climbableTopY !== undefined && pointInClimbableCircle(position.x, position.z, solid)) {
+          continue;
+        }
         resolveCircle(position, solid);
       }
     }
@@ -243,6 +314,68 @@ function pointInPolygon(x: number, z: number, polygon: Point2[]): boolean {
     }
   }
   return inside;
+}
+
+function canClimbSurface(
+  previous: THREE.Vector3,
+  position: THREE.Vector3,
+  surface: WalkableSurface,
+  options: MoveResolveOptions,
+  canOccupyTerrain: (previous: THREE.Vector3, candidate: THREE.Vector3, options: MoveResolveOptions) => boolean
+): boolean {
+  return pointInWalkableSurface(position.x, position.z, surface) && canOccupyTerrain(previous, position, options);
+}
+
+function resolveWalkableRectSide(position: THREE.Vector3, surface: WalkableSurface): void {
+  const local = toWalkableSurfaceLocal(position.x, position.z, surface);
+  const halfWidth = surface.width / 2 + playerRadius;
+  const halfDepth = surface.depth / 2 + playerRadius;
+  if (Math.abs(local.x) >= halfWidth || Math.abs(local.z) >= halfDepth) {
+    return;
+  }
+
+  const pushX = halfWidth - Math.abs(local.x);
+  const pushZ = halfDepth - Math.abs(local.z);
+  if (pushX < pushZ) {
+    local.x = local.x >= 0 ? halfWidth : -halfWidth;
+  } else {
+    local.z = local.z >= 0 ? halfDepth : -halfDepth;
+  }
+
+  const world = fromWalkableSurfaceLocal(local.x, local.z, surface);
+  position.x = world.x;
+  position.z = world.z;
+}
+
+function pointInWalkableSurface(x: number, z: number, surface: WalkableSurface): boolean {
+  const local = toWalkableSurfaceLocal(x, z, surface);
+  return Math.abs(local.x) <= surface.width / 2 && Math.abs(local.z) <= surface.depth / 2;
+}
+
+function pointInClimbableCircle(x: number, z: number, solid: CircleCollider): boolean {
+  return Math.hypot(x - solid.x, z - solid.z) <= solid.radius;
+}
+
+function toWalkableSurfaceLocal(x: number, z: number, surface: WalkableSurface): Point2 {
+  const yaw = surface.yaw ?? 0;
+  const dx = x - surface.x;
+  const dz = z - surface.z;
+  const cos = Math.cos(yaw);
+  const sin = Math.sin(yaw);
+  return {
+    x: dx * cos - dz * sin,
+    z: dx * sin + dz * cos
+  };
+}
+
+function fromWalkableSurfaceLocal(localX: number, localZ: number, surface: WalkableSurface): Point2 {
+  const yaw = surface.yaw ?? 0;
+  const cos = Math.cos(yaw);
+  const sin = Math.sin(yaw);
+  return {
+    x: surface.x + localX * cos + localZ * sin,
+    z: surface.z - localX * sin + localZ * cos
+  };
 }
 
 async function loadChunkHeightfields(): Promise<ChunkHeightfieldData[]> {

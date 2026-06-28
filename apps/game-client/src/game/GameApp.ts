@@ -138,7 +138,11 @@ export class GameApp {
 
   private configureScene(): void {
     // Les colliders des props generes (vegetation ouest) sont injectes une fois poses au sol.
-    configureWorld(this.scene, (colliders) => this.collision.addColliders(colliders));
+    configureWorld(
+      this.scene,
+      (colliders) => this.collision.addColliders(colliders),
+      (surfaces) => this.collision.addWalkableSurfaces(surfaces)
+    );
     const spawn = getInitialSpawn();
     this.cameraYaw = spawn.yaw;
     this.cameraPivot.position.set(spawn.x, spawn.y, spawn.z);
