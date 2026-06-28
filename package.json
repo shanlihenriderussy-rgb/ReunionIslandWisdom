@@ -1,7 +1,7 @@
 {
   "name": "reunion-island-wisdom",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "packageManager": "pnpm@10.12.1",
   "scripts": {
     "dev": "corepack pnpm --parallel --filter @riw/game-client --filter @riw/game-server dev",
@@ -27,6 +27,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.5.0",
+    "geotiff": "^3.0.5",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.62.0"
   }

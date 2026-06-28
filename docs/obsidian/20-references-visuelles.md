@@ -26,6 +26,20 @@ Regle :
 | Saint-Denis | [B6. Saint-Denis](<../Refs/Moodboards par zone/B6. Saint-Denis — hub urbain créole/B6. Saint-Denis — hub urbain créole.png>) | Hub urbain creole |
 | Route du Littoral | [B7. Route du Littoral](<../Refs/Moodboards par zone/B7. Route du Littoral — axe côtier/B7. Route du Littoral — axe côtier.png>) | Axe cotier, route, ocean, tension visuelle |
 
+## References terrain ajoutees
+
+| Zone | Fichier | Lecture DA | Usage runtime |
+| --- | --- | --- | --- |
+| Mafate / hauts du Maido | ![[assets/references/mafate/2026-06-27-mafate-brume-hauts.jpg]] | Ambiance hauts froids et brumeux : ciel lourd, nuages bas, silhouettes de tamarins/cryptomerias sombres, sol brun sec, pente ouverte, profondeur voilee. | Renforcer le Maido/Mafate avec brume douce, vegetation haute sombre en masses, herbes seches, palette vert-gris/desaturee. Ne pas importer la photo comme texture. |
+
+### Notes Mafate / hauts du Maido
+
+- Le point de vue Mafate ne doit pas rester uniquement "tropical vert clair".
+- Ajouter une couche d'ambiance plus froide : gris bleute du ciel, brume sur les plans lointains, ombres plus denses dans les bosquets.
+- Vegetation cible : tamarins des hauts / cryptomerias stylises, silhouettes arrondies ou coniques, masses sombres plutot que palmiers.
+- Sol cible : herbes seches, terre brun-gris, rochers sombres, zones degagees battues par le vent.
+- Gameplay : cette reference sert aux abords du belvedere Maido/Mafate, pas au littoral ouest.
+
 ## Style asset boards
 
 | Board | Fichier | Usage |

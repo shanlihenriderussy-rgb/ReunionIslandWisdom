@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { z } from "zod";
-import { worldBounds, itemCatalogSchema } from "@riw/shared";
+import { worldBounds, itemCatalogSchema, combatTargetCatalogSchema } from "@riw/shared";
 
 // Équivalent pour ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -65,6 +65,7 @@ function validate() {
   const items = readJsonFile("items.json");
   const itemCatalog = readJsonFile("item-catalog.json");
   const emotes = readJsonFile("emotes.json");
+  const combatTargets = readJsonFile("combat-targets.json");
 
   // 2. Validation par schéma Zod
   console.log("- Validation structurelle avec Zod...");
@@ -74,6 +75,7 @@ function validate() {
   itemsSchema.parse(items);
   itemCatalogSchema.parse(itemCatalog);
   emotesSchema.parse(emotes);
+  combatTargetCatalogSchema.parse(combatTargets);
 
   // 3. Validation de l'intégrité référentielle
   console.log("- Validation de l'intégrité référentielle...");
@@ -126,6 +128,13 @@ function validate() {
     checkBounds(npc.position.x, npc.position.z, `le PNJ "${npc.id}"`);
   }
 
+  for (const target of combatTargets) {
+    if (!zoneIds.has(target.zoneId)) {
+      throw new Error(`Erreur de référence : La cible combat "${target.id}" est affectée à une zone inexistante "${target.zoneId}".`);
+    }
+    checkBounds(target.position.x, target.position.z, `la cible combat "${target.id}"`);
+  }
+
   // 5. Unicité des identifiants
   console.log("- Validation de l'unicité des IDs...");
   const verifyUniqueness = (array: any[], key: string, typeLabel: string) => {
@@ -143,6 +152,7 @@ function validate() {
   verifyUniqueness(npcs, "id", "PNJ");
   verifyUniqueness(quests, "id", "Quête");
   verifyUniqueness(itemCatalog, "id", "Objet (catalogue)");
+  verifyUniqueness(combatTargets, "id", "Cible combat");
 
   // Unicité dans les listes simples
   const verifyListUniqueness = (array: string[], label: string) => {

@@ -1,4 +1,5 @@
-const CACHE_NAME = "riw-app-shell-v1";
+// Bump a CHAQUE release pour forcer Chrome a purger l'ancien cache PWA (voir 24-hebergement-production).
+const CACHE_NAME = "riw-app-shell-v0.1.1";
 const APP_SHELL = [
   "/",
   "/index.html",

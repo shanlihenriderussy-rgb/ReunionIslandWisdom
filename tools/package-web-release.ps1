@@ -55,6 +55,15 @@ New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
 
 Copy-Item -Path (Join-Path $distDir "*") -Destination $stageDir -Recurse -Force
 
+# Le terrain monolithique (GLB ~17 Mo) n'est PAS charge en prod : le streaming RGE ALTI
+# par chunks (ADR-005, world.ts shouldUseChunkStreaming) fournit le relief. On le retire
+# du package pour alleger le zip. Conserve dans dist/ (dev + fallback si chunks absents).
+$monolith = Join-Path $stageDir "assets\terrain\lareunion\lareunion-relief-map.glb"
+if (Test-Path -LiteralPath $monolith) {
+  Remove-Item -LiteralPath $monolith -Force
+  Write-Host "Terrain monolithique retire du package (streaming RGE ALTI actif)."
+}
+
 $installReadme = @"
 Reunion Island Wisdom — package web installable
 

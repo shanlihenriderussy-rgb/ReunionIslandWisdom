@@ -6,6 +6,10 @@ dist/
 *.log
 .logs/
 .obsidian/
+.agents/
+.codex/
+.pnpm-store/
+.wrangler/
 docs/obsidian/.obsidian/workspace*.json
 
 # Datasets sources lourds — non versionnes (regeneres via tools/).
@@ -17,9 +21,9 @@ _tmp_*
 _wtest.txt
 /output/
 Sans titre.*
+/*.canvas
 /2026-*.md
 *.local
 dist/
 target/
 gen/
-

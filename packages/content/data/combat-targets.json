@@ -1,0 +1,68 @@
+[
+  {
+    "id": "braise-errante-1",
+    "name": "Braise errante",
+    "zoneId": "piton-de-la-fournaise",
+    "position": { "x": 68, "z": -39 },
+    "maxHealth": 60,
+    "contactDamage": 6,
+    "attackCooldownMs": 1400,
+    "respawnMs": 6000,
+    "reward": "Cendre tiède"
+  },
+  {
+    "id": "gardien-scorie-1",
+    "name": "Gardien de scorie",
+    "zoneId": "piton-de-la-fournaise",
+    "position": { "x": 63.5, "z": -41 },
+    "maxHealth": 90,
+    "contactDamage": 10,
+    "attackCooldownMs": 1800,
+    "respawnMs": 9000,
+    "reward": "Scorie noire"
+  },
+  {
+    "id": "souffle-enclos-1",
+    "name": "Souffle de l'Enclos",
+    "zoneId": "piton-de-la-fournaise",
+    "position": { "x": 70.5, "z": -33 },
+    "maxHealth": 45,
+    "contactDamage": 5,
+    "attackCooldownMs": 1200,
+    "respawnMs": 5000,
+    "reward": "Air de l'Enclos"
+  },
+  {
+    "id": "galet-roulant-1",
+    "name": "Galet roulant",
+    "zoneId": "saint-paul-saint-gilles",
+    "position": { "x": -74.5, "z": 1 },
+    "maxHealth": 35,
+    "contactDamage": 4,
+    "attackCooldownMs": 1500,
+    "respawnMs": 5000,
+    "reward": "Galet poli"
+  },
+  {
+    "id": "remous-ravine-1",
+    "name": "Remous de ravine",
+    "zoneId": "saint-paul-saint-gilles",
+    "position": { "x": -69, "z": -19 },
+    "maxHealth": 55,
+    "contactDamage": 6,
+    "attackCooldownMs": 1500,
+    "respawnMs": 6000,
+    "reward": "Goutte de ravine"
+  },
+  {
+    "id": "embacle-ravine-1",
+    "name": "Embâcle de ravine",
+    "zoneId": "saint-paul-saint-gilles",
+    "position": { "x": -64.5, "z": -26 },
+    "maxHealth": 80,
+    "contactDamage": 8,
+    "attackCooldownMs": 1700,
+    "respawnMs": 8000,
+    "reward": "Éclat de bois flotté"
+  }
+]

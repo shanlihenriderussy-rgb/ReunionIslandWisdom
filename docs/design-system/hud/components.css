@@ -9,7 +9,8 @@
 
 .riw-panel {
   position: relative;
-  background: var(--hud-weave), var(--hud-panel);
+  background-color: var(--hud-panel);
+  background-image: var(--hud-weave, none);
   border: var(--bd-2) solid var(--contour);
   border-radius: var(--r-lg);
   box-shadow: var(--sh-pop);

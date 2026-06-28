@@ -4,9 +4,9 @@ Cycle : 1 phase par jour. DEV -> TEST -> FIX -> chantier suivant.
 
 ## Etat courant
 
-- phase: TEST
-- chantier: equipment
-- prochain_chantier: game-logic
+- phase: DEV
+- chantier: game-logic
+- prochain_chantier: enemy
 
 ## Feature livree (a tester au prochain run TEST)
 
@@ -16,6 +16,18 @@ Cycle : 1 phase par jour. DEV -> TEST -> FIX -> chantier suivant.
   - `packages/content/src/index.ts` : export `itemCatalog` type `ItemDefinition[]`.
   - `packages/content/scripts/validate-content.ts` : parse Zod du catalogue + integrite items.json<->catalogue (inclusion + completude) + unicite ids.
   - A verifier au TEST : `corepack pnpm --filter @riw/shared typecheck`, `corepack pnpm --filter @riw/content typecheck` (lance `validate:content`), `corepack pnpm typecheck` + `lint` sous Windows.
+
+## Feature testee (resultat phase TEST 2026-06-27 19:22)
+
+- equipment : catalogue d'objets + schema Zod (`itemDefinitionSchema`/`itemCatalogSchema`).
+- Logique rejouee avec le vrai `zod@4.4.3` du repo (store `.pnpm`) :
+  - parse catalogue OK : 20 objets.
+  - integrite items.json <-> catalogue OK (inclusion + completude).
+  - unicite ids OK.
+  - 4 tests negatifs rejetes correctement : equip+slot=aucun, non-empilable+maxStack=5, categorie inconnue, maxStack non entier.
+- Qualite data : 7 equipements (tous slot reel, non empilables, maxStack 1, poids senses), 5 consommables, 5 cles, 2 ressources, 1 instrument. Aucun poids hors plage.
+- FINDING (mineur, non bloquant) : `kayamb` (categorie `instrument`) a `slot=main`. Voulu (instrument tenu en main) mais le `superRefine` ne contraint QUE `equipement`. Categories non-equipables (`consommable`/`cle`/`monnaie`/`ressource`) pourraient recevoir un slot et passer la validation. Invariant inverse manquant.
+- typecheck/lint/build projet : a relancer sous Windows (mount Linux : symlinks pnpm casses, `tsx`/`@riw/shared` non resolus). Schema inchange depuis DEV, isole-checke 0 erreur au run precedent.
 
 ## Politique de validation (sandbox)
 
@@ -42,6 +54,11 @@ Cycle : 1 phase par jour. DEV -> TEST -> FIX -> chantier suivant.
 
 - [x] props-design : `depthWrite:false` deja en place sur les bouffees de vapeur (`makeFumarole`, ligne 297, materiau `MeshStandardMaterial transparent`). Polish OK.
 - [x] Proximite fumerolle <-> cairn/cone : garde-fou deterministe ajoute (`FUMAROLE_MIN_CLEAR=2.2`, nudge angulaire borne a 8 essais). Verif node : min dCairn=2.55 avec seed actuel (aucun nudge declenche, 0 regression visuelle), robuste a tout futur seed. Coords objectifs centralisees en `CAIRN_POS`/`CONE_POS`.
+
+## A corriger / polish (FIX equipment) — RESOLU 2026-06-27 19:40
+
+- [x] equipment : invariant inverse du slot ajoute dans `itemDefinitionSchema.superRefine` (`protocol.ts`). Constante centralisee `equippableCategories = ["equipement","instrument"]`. Regle : categorie equipable -> slot != `aucun` ; categorie non equipable -> slot `aucun`. Verif zod 4.4.3 reel : catalogue actuel toujours PASS (20), `kayamb` (instrument/main) PASS, et rejets OK (consommable+slot, instrument+aucun, cle+slot). Syntaxe `as const satisfies readonly ItemCategory[]` validee tsc 6.0.3 strict (snippet isole). typecheck/lint projet a relancer sous Windows.
+  - Note : pas de harness de tests unitaires dans le repo -> l'invariant est garanti par le schema (source de verite) + verifie en sandbox. Un vrai framework de tests reste un item futur potentiel.
 
 ## Bugs en attente (renseignes par TEST, corriges par FIX)
 
@@ -81,6 +98,8 @@ Cycle : 1 phase par jour. DEV -> TEST -> FIX -> chantier suivant.
 - 2026-06-26 10:58 — FIX gameplay interaction : `E`/bouton action ouvre un dialogue local immediat via `NetworkClient.openLocalDialogue`, puis conserve `sendInteract` serveur. Typecheck OK, lint OK, build OK. Playtest Edge offline : desktop `E` OK, mobile bouton OK. Dette : dialogue mobile trop haut + progression quete encore cote HUD. Cf. [[../iterations/2026-06-26-interaction-e-fallback]].
 - 2026-06-26 11:22 — FIX online interaction : serveur Colyseus repasse par `Server.listen()` officiel + health Express ; client normalise la reservation Colyseus 0.17 pour `colyseus.js@0.16`. Validation Chrome CDP : `En ligne - 6`, prompt `E Parler a Tatie Snack`, touche `E` -> dialogue `Tatie Snack`. Typecheck/lint client+serveur OK. Cf. [[../iterations/2026-06-26-interaction-e-fallback]].
 - 2026-06-26 22:31 — DEV equipment : catalogue d'objets structure (`item-catalog.json`, 20 objets) + schema Zod partage `itemDefinitionSchema`/`itemCatalogSchema` (`protocol.ts`) + export `itemCatalog` + validation content (Zod + integrite + completude + unicite). Donnees pures, zero impact client/serveur runtime. Sanity Zod sandbox (zod 4.4.3 reel) : 20 objets parses, integrite/unicite OK. Typecheck isole du bloc schema (tsc 6.0.3 reel, strict) : 0 erreur. tsc projet complet bloque par troncature du mount Linux (lag connu) -> a relancer sous Windows. Round-robin reste equipment (phase TEST demain). Phase suivante : TEST. Cf. [[../iterations/2026-06-26-equipment-item-catalog]].
+- 2026-06-27 19:22 — TEST equipment : catalogue + schema valides avec le vrai `zod@4.4.3`. Parse 20 objets OK, integrite items<->catalogue OK, unicite OK, 4 tests negatifs rejetes OK. Data propre (7 equipements coherents). 1 finding mineur non bloquant : invariant inverse manquant (`kayamb`/instrument a un slot ; categories non-equipables pourraient recevoir un slot). Loggé comme FIX. typecheck/lint projet a relancer sous Windows (symlinks pnpm casses). Phase suivante : FIX. Cf. [[../iterations/2026-06-27-test-equipment-catalogue]].
+- 2026-06-27 19:40 — FIX equipment : invariant inverse du slot ajoute (`itemDefinitionSchema.superRefine`, `protocol.ts`) + constante `equippableCategories`. Verif zod reel : catalogue PASS (20), rejets attendus OK ; tsc 6.0.3 strict OK (snippet). 0 regression data. Securite : durcit la validation serveur, aucune surface ajoutee. Round-robin -> game-logic. Phase suivante : DEV. Cf. [[../iterations/2026-06-27-fix-equipment-invariant-slot]].
 
 ## Validation distribution 2026-06-25 03:19
 

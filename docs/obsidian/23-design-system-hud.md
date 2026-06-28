@@ -9,6 +9,8 @@ Archive utilisateur :
 
 ```txt
 C:\Users\Shan li\Downloads\Reunion Island Wisdom design system.zip
+C:\Users\Shan li\Downloads\_Divers\Reunion Island Wisdom — HUD Design System.html
+C:\Users\Shan li\Downloads\_Divers\Reunion Island Wisdom — HUD Design System_files\tokens.css
 ```
 
 Integration repo :
@@ -50,6 +52,7 @@ Composants mis a jour :
 - bouton pause ;
 - toggle carte/jouer ;
 - slider zoom ;
+- mini-carte runtime canvas ;
 - chat ;
 - prompt PNJ ;
 - dialogue PNJ ;
@@ -70,15 +73,20 @@ Captures :
 - Pas d'import externe Google Fonts en runtime. Le CSS declare les familles, mais laisse le fallback systeme si elles ne sont pas installees.
 - Les composants non branches du mockup (gauges, minimap, reward, toast, inventaire) restent non actifs tant que le gameplay ne les porte pas.
 - 2026-06-07 : joystick tactile + bouton action "E" branches pour le mobile. Visibles uniquement sur pointeur grossier (`@media (pointer: coarse)`), masques en pause / vue carte / modale. Alimentent `InputController` (`setTouchVector`, `pressInteract`), pas de logique gameplay cote HUD. Classes : `.hud-touch-controls`, `.hud-joystick`, `.hud-joystick__thumb`, `.hud-action-btn`.
+- 2026-06-27 : la minimap n'est plus un mock. Elle devient une mini-carte canvas interactive, mise a jour en temps reel par `GameApp` (`HudController.setMapState`) + snapshot reseau. Elle affiche joueur, orientation, chemin Ouest, marqueurs de quete, biomes proches, cibles PvE et autres joueurs. Clic/tap ou `M` bascule la vue Carte ; molette sur la mini-carte regle la portee. Le zoom lateral est decale sous le bloc carte/statut pour eviter le chevauchement.
+- 2026-06-27 : le journal de quetes retire les recompenses fake et affiche seulement les donnees portees par le gameplay actuel : progression locale, zone, event serveur, et nombre de cibles PvE.
+- 2026-06-27 : le fichier HTML fourni par Shan devient la source active pour les tokens HUD. `tokens.css` est resynchronise dans `docs/design-system/hud/` et `apps/game-client/src/`. Les boutons haut-centre, la mini-carte et le statut utilisent maintenant les primitives `.riw-iconbtn`, `.riw-minimap` et `.riw-status`. Le fallback `--hud-weave` reste gere cote composants pour ne pas casser les panneaux si le token n'existe pas dans l'export.
 
 ## Limites
 
 - Le HUD mobile `?mapDebug` reste dense en bas si le debug est affiche en meme temps que le chat.
 - Les polices exactes dependent de la presence locale de `Paytone One` / `Nunito`.
 - Les pictos du mockup ne sont pas encore migrés en composants runtime.
+- Le vrai inventaire reste bloque tant que l'inventaire serveur n'existe pas.
+- Les anciennes variantes locales "coins carres" et "trame tapa" sont des essais documentes. Elles ne doivent plus etre considerees comme source active tant que le fichier HTML fourni reste la reference.
 
 ## Suite
 
 - Migrer les composants HUD vers une nomenclature stable `.riw-*` quand le gameplay sera fige.
 - Ajouter les pictos en SVG internes, pas via package externe.
-- Creer une vraie minimap seulement quand le systeme de carte est defini.
+- Brancher inventaire et recompenses sur un etat serveur authoritative avant de reactiver le sac public.

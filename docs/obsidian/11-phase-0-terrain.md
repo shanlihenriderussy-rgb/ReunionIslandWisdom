@@ -12,7 +12,7 @@ Le STL (`LaReunion.stl`) est un fallback non fiable. Interdit comme source final
 ## Pipeline cible
 
 ```txt
-Source : packages/assets/sources/lareunion/rgealti/   (.asc OK, .tif à venir via geotiff)
+Source : packages/assets/sources/lareunion/rgealti/   (.asc OK, .tif/.tiff OK via geotiff)
 Script : tools/build-lareunion-dem-terrain.mjs
 Cmd    : corepack pnpm terrain:dem
 ```
@@ -34,6 +34,9 @@ apps/game-client/public/assets/terrain/lareunion/chunks/lareunion-terrain-*.json
 - Dataset RGE ALTI present : **128 tuiles** `RGEALTI 2-0 5M ASC RGR92UTM40S-REUN89 D974 2023-09-05`
   (~940 Mo decompresse), dans `packages/assets/sources/lareunion/rgealti/`.
 - Header verifie : tuiles 1000x1000, cellsize 5 m, projection RGR92 UTM40S, NODATA -99999.
+- Support GeoTIFF acte le 2026-06-27 : dependance build-time `geotiff`, lecture bbox/nodata/resolution.
+- Projection/recentrage acte le 2026-06-27 : manifest = RGR92 / UTM zone 40S (EPSG:2975), centre UTM + `metersToWorldScale`.
+- Contrat LOD acte le 2026-06-27 : manifests compatibles `lodLevels`, niveau 0 full genere, niveau 1 mobile-low a produire.
 - Generation `corepack pnpm terrain:dem` terminee le 2026-06-05.
 - `chunks/manifest.json` porte bien `source: IGN RGE ALTI D974`.
 - `relief-map-manifest.json` porte bien `source: IGN RGE ALTI D974`.
@@ -70,14 +73,14 @@ Reste a faire :
 
 - [x] Récupérer dataset RGE ALTI D974 (résolution 5 m visée, 25 m acceptable au départ).
 - [x] Ingestion `.asc` → vérifier bornes géo, no-data, échelle Z.
-- [ ] Ajouter support `.tif/.tiff` (dépendance `geotiff`) — décision package à acter dans [[04-decisions]].
-- [ ] Normaliser projection (UTM 40S / RGR92) et recentrage monde.
+- [x] Ajouter support `.tif/.tiff` (dépendance `geotiff`) — décision package actée dans [[04-decisions]] ADR-017.
+- [x] Normaliser projection (UTM 40S / RGR92) et recentrage monde dans les manifests générés.
 - [x] Préparer génération GLB + heightfield + collision + manifest.
 - [x] Préparer génération chunks GLB + heightfield par chunk pour streamer.
 - [x] Générer réellement les sorties depuis RGE ALTI D974.
 - [x] Régler premiere échelle horizontale jouable (`targetLongestSide 220`).
 - [ ] Régler exagération verticale fine apres playtest marche/camera.
-- [ ] LOD terrain (chunks) pour perf mobile.
+- [ ] LOD terrain (chunks) pour perf mobile. Contrat manifest prêt ; génération niveau 1 à faire.
 
 ## Critères de sortie (validation obligatoire)
 
@@ -88,7 +91,8 @@ Reste a faire :
 - [x] Littoral ouest Saint-Paul / Saint-Gilles cohérent.
 - [x] Props terrestres alignes a l'île apres scale 220 : 0 prop terrestre hors contour collision.
 - [ ] Heightfield aligné au mesh en test de marche longue (collision = visuel).
-- [ ] Budget perf : terrain seul < cible FPS mobile (à fixer, ex. 60 fps desktop / 30 fps mobile).
+- [x] Budget perf cible fixe : terrain seul 60 fps desktop / 30 fps mobile.
+- [ ] Budget perf mesure : terrain seul < cible FPS mobile.
 - [x] ChunkStreamer compile et refuse les manifests non IGN.
 
 ## Risques

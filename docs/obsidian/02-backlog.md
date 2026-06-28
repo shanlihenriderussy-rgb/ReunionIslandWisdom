@@ -5,6 +5,10 @@
 Synthèse priorisée complète : [[25-graphismes-ameliorations]] (audit Codex 2026-06-25).
 Ordre P1 acté : (1) HUD mock caché (lève no-go audit) → (2) nappe lave + fumerolles `depthWrite:false` → (3) désactiver GLB monolithique si streamer actif.
 
+- [x] Fix : vegetation Ouest qui flottait — pose desormais sur les heightfields de chunks (relief visible = sol joueur) au lieu de `reliefCollision`. Voir [[iterations/2026-06-27-fix-vegetation-flottante]]. (2026-06-27, signale par screenshot Shan ; a confirmer visuel)
+- [x] Fix : bosquets Mafate / Maido flottants — suppression du `y` fixe, pose par heightfield de chunk. Voir [[iterations/2026-06-27-fix-bosquets-mafate-hauteur]]. (2026-06-27, reprise apres fix Claude ; a confirmer visuel)
+- [x] HUD : vraie mini-carte temps reel (joueur, chemin, zones, marqueurs, cibles, autres joueurs) + journal de quete non mock. Voir [[iterations/2026-06-27-hud-minicarte-runtime]]. (2026-06-27)
+
 ## Bugs priorises (P0-P3)
 
 Grille et process : voir [[03-playtests]]. Detail par bug : [[_templates/bug]].
@@ -15,13 +19,14 @@ Grille et process : voir [[03-playtests]]. Detail par bug : [[_templates/bug]].
 
 ### P1 — majeur (no-go sauf contournement)
 
-- [ ] Remplacer le relief STL par un MNT fiable IGN RGE ALTI D974.
+- [x] Remplacer le relief STL par un MNT fiable IGN RGE ALTI D974. (FAIT 2026-06-05, ADR-004 RESOLU + ChunkStreamer ADR-005 ; ligne laissee non cochee par erreur.)
 - [ ] Audit visuel global no-go : aligner zone de depart, objectif HUD, label zone, PNJ et couches monde. Voir [[playtests/2026-06-25-audit-visuel-global]].
 - [x] Fix interaction `E` : serveur authoritative realigne temporairement sur la zone Ouest, sinon il refusait les PNJ par distance. Voir [[iterations/2026-06-25-fix-interaction-e]].
 - [x] Fix interaction `E` / bouton parler : fallback dialogue local si Colyseus est offline ou lent. Voir [[iterations/2026-06-26-interaction-e-fallback]].
 - [x] Fix connexion online locale : `Server.listen()` Colyseus officiel + compat reservation serveur 0.17 / client JS 0.16. Voir [[iterations/2026-06-26-interaction-e-fallback]].
-- [ ] Mobile : reduire le panneau dialogue en bottom sheet compacte, lisible sans masquer le joueur.
+- [x] Mobile : reduire le panneau dialogue en bottom sheet compacte, lisible sans masquer le joueur. Voir [[iterations/2026-06-27-dialogue-mobile-bottom-sheet]].
 - [ ] Migrer la progression de quete dialogue vers un etat serveur authoritative avant recompenses/inventaire.
+- [ ] TEST PROD N1 : faire une passe manuelle Chrome/PWA + captures, car l'automatisation navigateur a timeout. Bloque le GO production complet. Voir [[playtests/2026-06-27-test-prod-n1]].
 
 ### P2 — mineur (go possible)
 
@@ -55,13 +60,44 @@ Grille et process : voir [[03-playtests]]. Detail par bug : [[_templates/bug]].
 - [ ] Ajouter un choix simple dans le premier dialogue avant validation objectif.
 - [ ] Ajouter quete "Bouchon Route du Littoral".
 - [x] Definir le modele de donnees objets (catalogue structure `item-catalog.json` + `itemDefinitionSchema` Zod partage). Voir [[iterations/2026-06-26-equipment-item-catalog]].
+- [x] Durcir `itemDefinitionSchema` : invariant inverse slot (seules categories equipables `equipement`/`instrument` -> slot != aucun ; autres -> slot `aucun`). Voir [[iterations/2026-06-27-fix-equipment-invariant-slot]].
 - [ ] Ajouter inventaire serveur (etat joueur : objets possedes + equipes, Zod, authoritative).
 - [ ] Relier `rewardTitle` des quetes a un id du catalogue (recompense -> objet).
 - [ ] Ajouter emotes.
 
+## Combat PvE leger — voir [[21-systeme-de-jeu]] / ADR-015
+
+- [x] Protocole combat partage (Zod) : `attackIntent`, `combatant`, HP joueur, `combatConfig`, `combatTargetDefinition`.
+- [x] Data cibles par zone (`combat-targets.json`, depart Fournaise) + validation gouvernance.
+- [x] `CombatSystem` serveur authoritative : attaque (portee+cooldown+degats), riposte cible, mort/respawn. Cable dans `ReunionWorldRoom`.
+- [x] Rendu client des cibles (procedural basalte + barre de vie billboard, `render/combatants.ts`). (slice 2, 2026-06-27)
+- [x] Barre de vie joueur dans le HUD (reelle, valeurs serveur, distincte du mock). (slice 2)
+- [x] Input attaque (touche F + bouton tactile) + envoi `attack` (cible la plus proche a portee). (slice 2)
+- [x] FIX : degats non provoques (joueur perdait des PV sans agir) -> aggro sur coup (`targetAggroDurationMs`). (2026-06-27)
+- [x] FIX : spawn client par defaut sur la Fournaise (aligne serveur, ADR-008/013) ; Ouest = `?visualZone=ouest`. (2026-06-27)
+- [x] Feedback de coup : flash cible + anim de mort + flash joueur (deltas PV snapshot). (slice 3, 2026-06-27)
+- [x] Son combat : SFX procedural Web Audio (`audio/sfx.ts`), aucun asset/dependance. (slice 3)
+- [x] Recompense a la destruction : souvenir envoye serveur-authoritative (`targetDefeated`) -> notif HUD. (slice 3)
+- [ ] Stocker reellement les souvenirs gagnes (depend de l'inventaire serveur).
+- [ ] Equilibrage combat au ressenti (playtest live) ; ajuster `combatConfig` + data cible.
+- [ ] Relier destruction de cible a une recompense quete.
+- [ ] Equilibrage (HP, degats, respawn) une fois le rendu valide en live.
+- [ ] Verifier praticabilite/placement des cibles Fournaise en `?mapDebug`.
+- [ ] Couleur distincte du bouton attaque mobile (styles.css, differe pour limiter le clobber).
+- [x] Aligner la barre de vie combat sur le design system (composant `.riw-gauge`, token `--color-health`) au lieu de styles inline. (2026-06-27)
+- [x] **Combat dormant resolu** : 3 cibles intro posees en zone Ouest le long du sentier blockout (`galet-roulant-1`, `remous-ravine-1`, `embacle-ravine-1`), difficulte croissante. Sur sentier (lateral <= 2.1), hors colliders. (2026-06-27)
+- [ ] Valider visuellement les cibles Ouest en `?mapDebug` (ancrage sol, pas dans l'eau/falaise) + ressenti au spawn.
+- [x] `activeEvent` derive de la zone de depart reelle (`eveil-${startZone.id}`) — plus de Fournaise en depart Ouest. (2026-06-27)
+- [ ] Objectif HUD : `START_QUEST_TITLE` = "Éveil de la Fournaise" encore present alors que les etapes sont Ouest (renommer le titre). Domaine HUD/objectif. Confirme au test prod N1 : serveur `activeEvent = eveil-fournaise`, HUD `START_QUEST_TITLE = Éveil de la Fournaise`.
+
 ## Tech
 
-- [ ] Ajouter pipeline DEM : RGE ALTI ASC/GeoTIFF -> heightfield JSON -> GLB terrain.
+- [x] Ajouter pipeline DEM : RGE ALTI ASC -> heightfield JSON -> GLB terrain.
+- [x] Ajouter support GeoTIFF build-time (`geotiff`) au pipeline DEM. Voir [[04-decisions]] ADR-017.
+- [x] Acter projection/recentrage terrain dans les manifests générés (RGR92 / UTM40S, centre UTM, scale monde). Voir [[11-phase-0-terrain]].
+- [ ] Regenerer les assets terrain publics pour inclure les nouveaux champs projection/worldMapping/lodLevels.
+- [ ] Generer LOD terrain niveau 1 mobile-low + selection runtime selon distance/perf.
+- [ ] Mesurer budget terrain seul : 60 fps desktop / 30 fps mobile.
 - [ ] Ajouter Rapier pour collisions.
 - [ ] Ajouter interpolation reseau plus propre.
 - [ ] Ajouter Supabase Auth.
@@ -83,7 +119,7 @@ Detail complet : [[24-hebergement-production]]. Decision : [[04-decisions]] ADR-
 - [ ] Pousser le repo sur GitHub (compte Shan) -> active CI ; branche `master` -> `main`.
 - [ ] Poser secrets `FLY_API_TOKEN`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` + var `DEPLOY_ENABLED=true`.
 - [ ] Origin check WS cote serveur (anti-clients pirates).
-- [ ] Retirer le GLB monolithique 18 Mo du build client.
+- [x] Retirer le GLB monolithique 18 Mo : runtime non charge si streaming valide (`world.ts shouldUseChunkStreaming`, Codex) + retire du package zip (`package-web-release.ps1`). dist/dev gardent le fallback. (2026-06-27) Confirme test prod N1 : `assets/terrain/lareunion/lareunion-relief-map.glb` = 17,42 Mo dans le zip v0.1.1.
 - [ ] Monitoring : logs Fly + Sentry.
 
 ## Contenu Reunion
@@ -110,17 +146,17 @@ Detail complet : [[24-hebergement-production]]. Decision : [[04-decisions]] ADR-
 - [x] Ajouter script zip `tools/package-web-release.ps1`.
 - [x] Ajouter contrat MCP local `mcp/riw-build-cook.mcp.json`.
 - [x] Valider `corepack pnpm release:web` hors sandbox : zip OK `output/reunion-island-wisdom-web-0.1.0-20260625-031928.zip`.
-- [ ] Tester installation Chrome/Edge depuis le zip servi localement.
+- [ ] Tester installation Chrome/Edge depuis le zip servi localement. Test prod N1 : zip v0.1.1 valide, mais installation Chrome non verifiee (outil navigateur timeout).
 - [ ] Decider si prochaine etape = zip serveur separe ou Tauri 2 Windows.
 
 ## Bugs visuels
 
 - [x] Fix visuel screenshots ouest : sentier adapte au devers, props inclines, vegetation moins noire, terrain chunks adoucis. Voir [[iterations/2026-06-25-west-visual-slope-shader-fix]].
 - [x] Passe B1 fidelite references : lagon/shoreline visibles en vue normale, ponton, barque, cases creoles procedurales, sentier plus sable. Voir [[iterations/2026-06-25-codex-fidelite-visuelle-b1]].
-- [ ] P1 : choisir la zone active de build (Fournaise ou Ouest) et synchroniser spawn + objectifs + zone label + focus carte.
+- [x] P1 : choisir la zone active de build (Fournaise ou Ouest) et synchroniser spawn + objectifs + zone label + focus carte. Voir [[iterations/2026-06-27-spawn-zone-sync]].
 - [ ] P1 : mettre les couches monde non actives derriere flag debug (addWestBlockout, addFournaiseBlockout, scenic, overlays).
 - [ ] P1 : desactiver PNJ/minimap/gauges/hotbar mockes tant qu'ils ne sont pas portes par le gameplay.
-- [ ] P1 : empecher le chargement du GLB monolithique quand le terrain streame par chunks est actif.
+- [x] P1 : empecher le chargement du GLB monolithique quand le terrain streame par chunks est actif. Implemente via sonde `shouldUseChunkStreaming()` dans `world.ts`. Voir [[iterations/2026-06-26-glb-monolithique-guard]].
 - [ ] P2 : revalider densite vegetation, couleur noire residuelle, chemin orange et plateformes sable apres nouvelle capture.
 - [ ] P2 : revalider la ressemblance B1 par capture desktop/mobile apres la passe Codex.
 - [ ] Revalider en PWA / Chrome apres build hors sandbox.

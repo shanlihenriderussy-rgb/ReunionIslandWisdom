@@ -1,3 +1,253 @@
+## 2026-06-27 22:19 - Une vraie mini-carte jouable dans le HUD
+
+En clair :
+
+- La petite carte en haut a droite n'est plus une image decorative.
+- Elle montre maintenant la position du joueur en direct, son orientation, le chemin Ouest, les points importants, les zones proches, les cibles et les autres joueurs connectes.
+- Cliquer dessus, toucher dessus ou appuyer sur `M` bascule la vue Carte.
+- La molette sur la mini-carte change la portee affichee.
+- Le journal de quetes a ete nettoye : il ne promet plus de fausses recompenses. Il affiche seulement ce que le jeu sait vraiment.
+
+Impact :
+
+- Le HUD devient utile pour jouer, pas seulement joli.
+- Le joueur peut se situer sans ouvrir une grande carte.
+- L'interface reste lisible sur desktop et mobile.
+
+Statut :
+
+- Typecheck, lint et build client OK.
+- Capture Chrome desktop + mobile OK : mini-carte non vide, pas de chevauchement avec objectif/zoom.
+- Detail : [[iterations/2026-06-27-hud-minicarte-runtime]].
+
+## 2026-06-27 21:57 - Deuxieme correction : les bosquets sombres du Maido touchent le sol
+
+En clair :
+
+- Apres la premiere correction, certains arbres sombres du cote Maido / Mafate flottaient encore.
+- Ce n'etait pas le meme systeme de vegetation : ces bosquets etaient poses a une hauteur fixe, au lieu de lire le vrai relief.
+- Correction : chaque bosquet lit maintenant la hauteur du morceau de terrain sur lequel il se trouve.
+- Les troncs ont aussi ete repositionnes depuis leur base, pour eviter un decalage visuel.
+
+Impact :
+
+- Les silhouettes sombres inspirées des hauts de Mafate doivent maintenant coller au relief.
+- Le bug venait d'un decor procedurale Mafate, pas de la vegetation Ouest deja corrigee.
+
+Statut :
+
+- Correction code faite. Typecheck et lint client OK.
+- Verification visuelle a confirmer apres rechargement du jeu.
+- Detail : [[iterations/2026-06-27-fix-bosquets-mafate-hauteur]].
+
+## 2026-06-27 21:48 - Les arbres ne flottent plus
+
+En clair :
+
+- Sur une capture du jeu, des palmiers (en haut a gauche) flottaient au-dessus du sol.
+- Cause : la vegetation se posait sur une carte du relief un peu differente de celle qu'on voit vraiment a l'ecran (et sur laquelle marche le joueur). D'ou le decalage.
+- Correction : la vegetation se pose maintenant sur exactement le meme relief que le joueur -> elle touche le sol.
+- Bonus : cette capture prouve que le jeu s'affiche bien (terrain, chemin, personnage, barre de vie). C'etait justement le point qu'on n'avait pas pu verifier au 1er test prod.
+
+Statut :
+
+- Correction faite. A reconfirmer a l'ecran apres rechargement (que tous les arbres/rochers touchent bien le sol).
+- Detail : [[iterations/2026-06-27-fix-vegetation-flottante]].
+
+## 2026-06-27 21:44 - Le terrain accepte maintenant les fichiers GeoTIFF
+
+En clair :
+
+- Le generateur de terrain sait maintenant travailler avec les fichiers `.asc` existants et les fichiers `.tif/.tiff`.
+- La projection du relief est mieux documentee : le jeu sait que la source terrain est en RGR92 / UTM 40S, le systeme utilise a La Reunion.
+- Le fichier de sortie pourra aussi indiquer le centre exact utilise pour placer l'ile dans le monde du jeu.
+- On a pose la base technique pour un futur terrain plus leger sur mobile.
+
+Impact :
+
+- Moins de risque de relief decale.
+- Meilleure base pour tester la marche, la camera et les collisions.
+- Le LOD mobile n'est pas encore genere : c'est la prochaine etape terrain.
+
+Statut :
+
+- Patch pipeline et documentation faits.
+- Les gros fichiers terrain publics devront etre regeneres pour contenir les nouveaux champs.
+- Detail : [[11-phase-0-terrain]], [[04-decisions]] ADR-017.
+
+## 2026-06-27 21:08 - Test production n°1 de la version 0.1.1
+
+En clair :
+
+- La version web installable `0.1.1` a été fabriquée correctement.
+- Le fichier final existe : `reunion-island-wisdom-web-0.1.1-20260627-205439.zip`.
+- Le cache de l'application Chrome est bien passé en `v0.1.1`, pour éviter que l'ancienne version reste coincée.
+- Le serveur local répond, et deux clients peuvent se connecter au monde.
+- Le combat côté serveur fonctionne : les cibles Ouest existent, on ne prend pas de dégâts sans attaquer, l'attaque à portée fait baisser la vie, une cible vaincue donne un souvenir, puis réapparaît.
+
+Point important :
+
+- Le test visuel dans Chrome n'a pas pu être terminé avec l'outil automatique : pas de capture fiable du jeu, pas de vérification de l'installation PWA.
+- Donc la version est techniquement prête pour une passe de test, mais pas encore validée pour un vrai GO production.
+
+Bugs/risques retenus :
+
+- l'événement interne parle encore de la Fournaise alors que le départ est à l'Ouest ;
+- le gros fichier de relief de 17 Mo est encore dans le paquet ;
+- l'installation Chrome et la mise à jour PWA doivent être vérifiées manuellement.
+
+Statut :
+
+- Verdict : **NO-GO production complet** tant que Chrome/PWA et le rendu en jeu ne sont pas validés à l'écran.
+- Détail : [[playtests/2026-06-27-test-prod-n1]].
+
+## 2026-06-27 17:42 - Suite du 1er test prod : deux corrections
+
+En clair :
+
+- Le 1er test "comme en vrai" a montre que tout le cote serveur du combat marche (degats, mort, recompense, anti-triche). Mais le rendu a l'ecran et l'installation dans Chrome n'ont pas pu etre verifies (l'outil navigateur a calé). Verdict prudent : on attend une verif visuelle avant de dire "bon pour prod".
+- En attendant, on a corrige deux details signales :
+  1. Le jeu annoncait en interne un evenement "volcan" alors qu'on demarre a l'Ouest : c'est aligne sur la vraie zone de depart.
+  2. Le gros fichier de relief (~17 Mo) etait encore embarque dans le paquet installable alors qu'il ne sert plus (le relief arrive maintenant par petits morceaux). On le retire du paquet -> telechargement bien plus leger. Le fichier reste dispo en secours cote developpement.
+
+Impact :
+
+- Paquet plus leger a la prochaine fabrication. Coherence interne retablie.
+- Le verdict reste "pas encore bon pour prod" tant que l'affichage + l'installation Chrome ne sont pas valides a l'oeil.
+
+Statut :
+
+- Corrections faites cote code. A refabriquer + verifier a l'ecran sur la machine de Shan.
+- Detail : [[playtests/2026-06-27-test-prod-n1]].
+
+## 2026-06-27 16:16 - Le combat prend vie : impacts, sons, recompenses
+
+En clair :
+
+- Frapper une cible se voit et s'entend maintenant : la cible « tressaille » quand elle encaisse, joue une petite animation quand elle est detruite, et il y a des petits sons (coup, impact, destruction, joueur blesse).
+- Les sons sont fabriques par le jeu lui-meme (de simples bips genere a la volee), pas des fichiers telecharges : zero souci de droits, et rien a installer.
+- Quand le joueur prend des degats, l'ecran clignote brievement en rouge.
+- A chaque cible vaincue, le joueur recoit un petit souvenir local (« Galet poli », « Cendre tiede »...) annonce a l'ecran. Pour l'instant c'est juste l'annonce : le rangement dans un vrai sac viendra avec l'inventaire.
+
+Impact :
+
+- Le combat devient lisible et satisfaisant, sans alourdir le jeu ni trahir l'esprit (exploration d'abord, combat leger).
+- Tout ce qui compte (degats, mort, recompense) est decide par le serveur : pas de triche possible.
+
+Statut :
+
+- Code verifie (syntaxe). Verification technique complete + test a l'ecran (image + son) a faire sur la machine de Shan.
+- Detail : [[iterations/2026-06-27-combat-core]].
+
+## 2026-06-27 14:55 - Du combat des le depart (zone Ouest)
+
+En clair :
+
+- Comme le jeu demarre maintenant a l'Ouest, on y a place 3 cibles d'entrainement le long du chemin, de plus en plus coriaces : un « galet roulant », un « remous de ravine », puis un « embacle de ravine ».
+- Elles sont posees pile sur le sentier, donc le joueur les croise naturellement en avancant, sans se retrouver coince dans un decor.
+- Les cibles du volcan restent en place pour quand on visite la Fournaise.
+
+Impact :
+
+- Le combat est desormais jouable des le depart, sans reglage special.
+- La difficulte monte doucement le long du chemin (bonne premiere prise en main).
+
+Statut :
+
+- Placement verifie automatiquement (sur le sentier, hors obstacles). Reste a confirmer a l'ecran (`?mapDebug`) que rien ne flotte ni ne s'enfonce.
+- Detail : [[iterations/2026-06-27-combat-core]].
+
+## 2026-06-27 14:45 - Synchronisation : depart a l'Ouest + barre de vie au style maison
+
+En clair :
+
+- On a synchronise le travail fait en parallele (un autre assistant, « Codex », avait ajoute le saut avec Espace et choisi le point de depart). Tout cohabite proprement.
+- Decision prise : le jeu demarre par defaut a l'**Ouest** (Saint-Paul / Saint-Gilles), pas au volcan. Le volcan reste accessible avec un reglage special. Ecran et serveur sont maintenant d'accord sur ce point de depart (avant, ils se contredisaient).
+- Consequence a connaitre : les cibles de combat sont au volcan. Donc au depart par defaut (l'Ouest), il n'y a pas encore de combat sous la main. Prochaine etape possible : poser des cibles a l'Ouest.
+- La barre de vie du joueur a ete remise au « style maison » du jeu (le meme look que le reste de l'interface) au lieu d'un style provisoire.
+
+Statut :
+
+- Code aligne (depart Ouest cote ecran + serveur, barre de vie au design system). Re-verification technique + test a l'ecran a faire sur la machine de Shan.
+- Detail : [[04-decisions]] ADR-016, [[iterations/2026-06-27-spawn-zone-sync]].
+
+## 2026-06-27 14:25 - Preparer la version installable (0.1.1) pour Chrome
+
+En clair :
+
+- On prepare une nouvelle version du jeu, la `0.1.1`, qui contient tout le combat (cibles, barre de vie, attaque, et la correction des PV).
+- Pour qu'on puisse l'installer comme une appli depuis Google Chrome, il y a un detail technique important : le navigateur garde l'ancienne version en memoire. On a donc « change l'etiquette » de cette memoire (le cache) pour forcer Chrome a prendre la nouvelle version au lieu de l'ancienne.
+- La fabrication finale du programme (le « build ») se fait sur l'ordinateur de Shan sous Windows : le mode de travail actuel ne permet pas de la lancer ici. La marche a suivre exacte est notee dans le projet.
+
+A retenir :
+
+- Pour jouer au combat, il faut que le serveur du jeu soit allume (c'est lui qui gere les cibles et les degats). L'appli installee toute seule ne suffit pas.
+- Le jeu demarre maintenant directement au volcan.
+
+Statut :
+
+- Version et cache mis a jour cote code. Build + installation a faire sur la machine de Shan.
+- Procedure detaillee : [[25-programme-installable-mcp]] (section « Release v0.1.1 »).
+
+## 2026-06-27 14:18 - Correction : on ne perd plus de vie sans raison
+
+En clair :
+
+- Probleme remonte : le personnage perdait de la vie tout seul, sans qu'on fasse rien.
+- Cause : les cibles du volcan attaquaient tout joueur qui passait a cote, et le point d'apparition tombait pile au milieu d'elles. Resultat : on prenait des coups sans comprendre d'ou ils venaient.
+- Correction : desormais une cible ne riposte que si on l'a frappee en premier (et seulement quelques secondes, tant qu'on reste pres d'elle). Plus aucun degat juste en passant a cote.
+- En bonus : le jeu demarre maintenant directement au volcan (la ou sont les cibles), plus besoin d'un reglage special. L'ancienne zone Ouest reste accessible pour les tests.
+
+Impact pour le projet :
+
+- Le combat est juste : on choisit quand se battre.
+- Le point de depart est enfin coherent entre l'ecran et le serveur.
+
+Statut :
+
+- Logique re-testee automatiquement (20 verifications, dont « aucun degat sans attaquer »). Test a l'ecran a faire sur la machine de Shan.
+- Detail : [[iterations/2026-06-27-combat-core]].
+
+## 2026-06-27 14:10 - Le combat devient visible et jouable
+
+En clair :
+
+- Suite de la matinee : avant, le combat existait seulement « dans les calculs » du serveur, rien a l'ecran. Maintenant on le voit et on peut le declencher.
+- Les cibles du volcan apparaissent dans le jeu (formes de basalte/braise) avec une petite barre de vie au-dessus qui descend quand on les frappe.
+- Le joueur a sa propre barre de vie a l'ecran (les vraies valeurs du serveur, pas une fausse jauge de demo).
+- Pour attaquer : touche **F** sur ordinateur, ou un bouton **F** sur mobile. Le jeu vise automatiquement la cible la plus proche a portee. C'est toujours le serveur qui decide si le coup compte.
+
+Impact pour le projet :
+
+- Premiere boucle de combat reellement jouable : voir une cible, s'approcher, frapper, la vaincre, et la voir reapparaitre.
+- A noter : a cause d'un reste de chantier en cours (le point de depart du jeu n'est pas encore aligne entre l'ecran et le serveur), il faut pour l'instant lancer le jeu en mode volcan (`?visualZone=fournaise`) pour se retrouver pres des cibles.
+
+Statut :
+
+- Code verifie (syntaxe + cohérence). Verification technique complete et test a l'ecran a faire sur la machine de Shan.
+- Detail : [[iterations/2026-06-27-combat-core]].
+
+## 2026-06-27 12:14 - Le jeu sait maintenant gerer un combat (leger)
+
+En clair :
+
+- Jusqu'ici, le jeu disait clairement « ce n'est pas un jeu de combat ». Shan a decide d'ajouter quand meme un combat, mais leger : on reste avant tout sur l'exploration et l'entraide.
+- On a pose les bases cote serveur : le joueur a des points de vie, et il y a des cibles a affronter. Pour le depart, ce sont des aleas du volcan (une « braise errante », un « gardien de scorie », un « souffle de l'Enclos ») — pas des animaux ni des gens.
+- Quand le joueur attaque, c'est le serveur (la partie qui fait foi) qui decide tout : est-il assez pres ? a-t-il le droit de frapper maintenant ? combien de degats ? La cible peut riposter. Si le joueur tombe a zero, il reapparait peu apres.
+- Important : pas de combat entre joueurs (pas de PvP). On ne s'attaque qu'a des cibles du decor.
+
+Impact pour le projet :
+
+- C'est la fondation du combat. Tout est verrouille cote serveur, donc difficile a tricher.
+- Les cibles sont rangees par zone, comme les decors : ca relie le combat au level design (on les placera la ou la zone le demande).
+- A l'ecran, rien n'est encore visible : cette etape est invisible (logique seule). La suite : afficher les cibles, une barre de vie, et un bouton pour attaquer.
+
+Statut :
+
+- Logique de combat testee automatiquement (17 verifications passees) ; donnees des cibles verifiees (3 cibles, sans erreur). Verification technique complete a refaire sur la machine de Shan.
+- A noter : le terrain « vrai relief » de l'ile est en fait deja en place depuis le 5 juin ; certaines notes du projet disaient encore le contraire (corrige).
+- Detail : [[iterations/2026-06-27-combat-core]].
+
 ## 2026-06-26 22:31 - Une fiche d'identite pour chaque objet du jeu
 
 En clair :
@@ -1170,3 +1420,67 @@ Statut :
 - Test desktop touche `E` OK.
 - Test mobile bouton action OK.
 - Detail : [[iterations/2026-06-26-interaction-e-fallback]].
+
+## 2026-06-27 - HUD recale sur le design system fourni
+
+En clair :
+
+- Shan a fourni une page HTML de reference pour le HUD.
+- Le jeu reprend maintenant les couleurs, rayons, ombres et bases visuelles depuis ce fichier.
+- La mini-carte, les boutons du haut et le statut de connexion utilisent mieux les composants communs du design system.
+
+Impact :
+
+- Le HUD est moins improvise fichier par fichier.
+- Les prochains ajustements visuels partent d'une source claire.
+- Les anciens essais locaux restent notes, mais ne sont plus la reference active.
+
+Statut :
+
+- Patch runtime et documentation faits.
+- Detail : [[iterations/2026-06-27-hud-design-system-html]].
+
+## 2026-06-27 19:22 - Verification du catalogue d'objets
+
+En clair :
+
+- Le jeu a une liste de 20 objets (plats creoles, gourde, lampe frontale, casquette 974, kayamb, etc.).
+- Aujourd'hui on a verifie que cette liste est saine, sans se contenter de croire qu'elle l'etait.
+- On a teste avec le meme outil de controle que celui du jeu : les 20 objets sont bien formes, sans doublon, et chaque objet de la liste a sa fiche complete.
+- On a aussi essaye d'y glisser des objets faux (un equipement sans emplacement, une quantite impossible) : le controle les a bien refuses.
+
+Detail repere :
+
+- Le kayamb (instrument de musique) se tient en main. C'est voulu.
+- Mais la regle actuelle ne verrouille que les "equipements". Un plat ou une cle pourrait, par erreur, recevoir un emplacement de port sans etre bloque.
+- Ce n'est pas un bug visible aujourd'hui (les donnees sont propres), juste une securite a resserrer.
+
+Impact :
+
+- Le catalogue d'objets est fiable pour la suite (inventaire, recompenses de quete).
+- La prochaine etape resserre la regle pour empecher toute erreur future.
+
+Statut :
+
+- Verification logique faite ici. Verification finale (typecheck/build) a refaire sous Windows.
+- Detail : [[iterations/2026-06-27-test-equipment-catalogue]].
+
+## 2026-06-27 19:40 - Regle plus stricte sur les objets
+
+En clair :
+
+- Hier on avait repere un petit angle mort : la regle qui range les objets laissait, en theorie, mettre un "emplacement de port" (tete, mains, pieds...) sur un objet qui ne se porte pas, comme un plat ou une cle.
+- Aujourd'hui on a resserre la regle. Desormais :
+  - les objets qui se portent (equipements, et les instruments comme le kayamb qu'on tient en main) DOIVENT avoir un emplacement ;
+  - tous les autres (nourriture, cles, ressources) NE PEUVENT PAS en avoir.
+
+Impact :
+
+- Impossible de creer par erreur un objet incoherent.
+- C'est le serveur qui controle, donc un joueur ne peut pas tricher en bricolant ses objets.
+- Les 20 objets actuels respectent deja la regle : rien ne change a l'ecran.
+
+Statut :
+
+- Correctif fait et verifie. Verification finale (typecheck/build) a refaire sous Windows.
+- Detail : [[iterations/2026-06-27-fix-equipment-invariant-slot]].

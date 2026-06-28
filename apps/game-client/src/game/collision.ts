@@ -45,9 +45,17 @@ type CircleCollider = {
   radius: number;
 };
 
+type MoveResolveOptions = {
+  airborne?: boolean;
+  currentY?: number;
+};
+
 const playerRadius = 0.22;
 const westPlayableMinHeight = 0.12;
 const westPlayableHalfWidth = 5.5;
+const maxGroundStepUp = 0.58;
+const maxGroundStepDown = 1.15;
+const airborneGroundClearance = 0.12;
 const defaultBounds = {
   minX: -77.5,
   maxX: 77.5,
@@ -71,16 +79,16 @@ export class WorldCollision {
     this.solids.push(...colliders);
   }
 
-  resolveMove(previous: THREE.Vector3, proposed: THREE.Vector3): THREE.Vector3 {
+  resolveMove(previous: THREE.Vector3, proposed: THREE.Vector3, options: MoveResolveOptions = {}): THREE.Vector3 {
     const resolved = proposed.clone();
 
-    if (!this.isWalkable(resolved.x, resolved.z)) {
+    if (!this.canOccupyTerrain(previous, resolved, options)) {
       const xOnly = new THREE.Vector3(proposed.x, previous.y, previous.z);
       const zOnly = new THREE.Vector3(previous.x, previous.y, proposed.z);
 
-      if (this.isWalkable(xOnly.x, xOnly.z)) {
+      if (this.canOccupyTerrain(previous, xOnly, options)) {
         resolved.copy(xOnly);
-      } else if (this.isWalkable(zOnly.x, zOnly.z)) {
+      } else if (this.canOccupyTerrain(previous, zOnly, options)) {
         resolved.copy(zOnly);
       } else {
         resolved.copy(previous);
@@ -88,16 +96,23 @@ export class WorldCollision {
     }
 
     this.resolveSolidCollisions(resolved);
-    if (!this.isWalkable(resolved.x, resolved.z)) {
+    if (!this.canOccupyTerrain(previous, resolved, options)) {
       resolved.copy(previous);
     }
 
-    resolved.y = this.getGroundHeight(resolved.x, resolved.z);
+    if (!options.airborne) {
+      resolved.y = this.getGroundHeight(resolved.x, resolved.z);
+    }
     return resolved;
   }
 
   snapToGround(position: THREE.Vector3): void {
     position.y = this.getGroundHeight(position.x, position.z);
+  }
+
+  // Hauteur de sol en (x, z) — pour ancrer des entites non joueur (cibles combat, marqueurs).
+  sampleGround(x: number, z: number): number {
+    return this.getGroundHeight(x, z);
   }
 
   private async loadTerrain(): Promise<void> {
@@ -125,6 +140,33 @@ export class WorldCollision {
     }
 
     return isInsideBounds(x, z, terrain.bounds) && pointInPolygon(x, z, terrain.outline);
+  }
+
+  private canOccupyTerrain(previous: THREE.Vector3, candidate: THREE.Vector3, options: MoveResolveOptions): boolean {
+    if (!this.isWalkable(candidate.x, candidate.z)) {
+      return false;
+    }
+
+    // Le heightfield devient un obstacle : on accepte les petites marches, pas les falaises.
+    const previousGround = this.getGroundHeight(previous.x, previous.z);
+    const candidateGround = this.getGroundHeight(candidate.x, candidate.z);
+    if (options.airborne) {
+      const horizontalDistance = Math.hypot(candidate.x - previous.x, candidate.z - previous.z);
+      if (horizontalDistance < 0.0001) {
+        return true;
+      }
+      const currentY = options.currentY ?? candidate.y;
+      return candidateGround <= previousGround + maxGroundStepUp || currentY + airborneGroundClearance >= candidateGround;
+    }
+
+    const deltaY = candidateGround - previousGround;
+    if (deltaY > maxGroundStepUp) {
+      return false;
+    }
+    if (deltaY < -maxGroundStepDown) {
+      return false;
+    }
+    return true;
   }
 
   private getGroundHeight(x: number, z: number): number {

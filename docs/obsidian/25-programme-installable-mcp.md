@@ -152,3 +152,65 @@ Warnings :
 - chunk JS Vite > 500 kB ;
 - binaire non signe -> SmartScreen probable ;
 - GLB monolithique encore present dans le bundle.
+
+## Release v0.1.1 — combat (2026-06-27)
+
+Contenu de cette version : combat PvE leger (ADR-015) + rendu cibles + barre de vie + input attaque (F) + fix « PV perdus sans raison » (aggro sur coup) + depart par defaut a la Fournaise.
+
+Prepare cote repo (fait) :
+
+- `package.json` racine + `apps/game-client/package.json` : version `0.1.0` -> `0.1.1`.
+- `apps/game-client/public/sw.js` : `CACHE_NAME` -> `riw-app-shell-v0.1.1`. **Indispensable** : sans ce bump, Chrome resert l'ancienne PWA depuis le cache (le fetch des assets est cache-first).
+
+A executer par Shan sous Windows (le build est PowerShell/Windows, pas executable dans le sandbox Linux) :
+
+```powershell
+# 1. (si besoin) reparer les deps + repris le lien @riw/shared ecrase pour les tests
+corepack pnpm install
+
+# 2. supprimer le fichier de test temporaire laisse par le sandbox (EPERM cote Linux)
+Remove-Item -LiteralPath ".\_combat-sanity.mts" -ErrorAction SilentlyContinue
+
+# 3. controles avant build
+corepack pnpm --filter @riw/game-client typecheck
+corepack pnpm --filter @riw/game-client lint
+corepack pnpm typecheck   # shared + content + server (combat)
+
+# 4. build + cook + zip web
+corepack pnpm release:web
+```
+
+Sortie attendue : `output/reunion-island-wisdom-web-0.1.1-<timestamp>.zip` (index.html + sw.js v0.1.1 a la racine).
+
+### Installer / mettre a jour la PWA via Chrome
+
+1. Servir le client :
+   - simple : `corepack pnpm launch:web` (build + serveur statique + ouvre le navigateur) ;
+   - ou manuel : extraire le zip puis `python -m http.server 5173` depuis le dossier, ouvrir `http://localhost:5173`.
+2. Dans Chrome : icone « Installer » dans la barre d'adresse (ou menu ⋮ -> « Installer Reunion Island Wisdom »).
+3. Mise a jour d'une PWA deja installee : recharger l'onglet. Le nouveau `sw.js` (v0.1.1) s'active et purge l'ancien cache (handler `activate`). Au besoin, fermer/rouvrir l'app installee.
+
+### Important : le combat exige le serveur
+
+- La PWA = client seul. Les cibles et les degats viennent du serveur Colyseus (autoritaire).
+- Local : `corepack pnpm dev` lance client + serveur. Sans serveur, pas de cibles ni de combat (snapshot vide).
+- Prod : le client packagé parle a `VITE_GAME_SERVER_URL` (`wss://riw-game-server.fly.dev`, cf. ADR-007) ; le serveur doit etre deploye/allume.
+- Depart : Fournaise par defaut (les cibles y sont). `?visualZone=ouest` pour le blockout Ouest.
+
+### Limites / dette (inchangees)
+
+- GLB monolithique 18 Mo encore dans le bundle (dette perf prioritaire).
+- Binaire desktop non signe (hors scope Chrome PWA).
+- Build non rejouable dans le sandbox (PowerShell + toolchain Windows + troncature mount ADR-014).
+
+### Correctifs build observes sous Windows (2026-06-27)
+
+- `packages/content` : scripts `build` / `typecheck` appelaient `pnpm validate:content` (pnpm nu absent du PATH -> `'pnpm' n'est pas reconnu`). Remplaces par `tsx scripts/validate-content.ts` directement. `corepack pnpm typecheck` passe maintenant sans `corepack enable`.
+- `vite build` peut echouer `ENOTEMPTY: dist\assets` (verrou fichier : OneDrive qui synchronise `Documents`, ou serveur statique tenant `dist`). Parade : couper le serveur (`corepack pnpm stop:web`), `Remove-Item -Recurse -Force apps\game-client\dist`, mettre OneDrive en pause, puis relancer `corepack pnpm release:web`.
+- Validation client confirmee : `@riw/game-client` typecheck + lint = OK (code combat propre sous tsc/eslint reels).
+
+Typecheck serveur (latent, pre-existant, surface par `corepack pnpm typecheck`) :
+
+- `apps/game-server/tsconfig.json` etait en `module/moduleResolution: NodeNext`, alors que toute la base monorepo est en `Bundler` (les packages exportent `src/index.ts` brut). NodeNext exigeait l'attribut `with { type: "json" }` sur les imports JSON de `@riw/content` -> TS1543 sur TOUTES les imports (pas seulement la cible combat). Fix : retirer la surcharge NodeNext, le serveur herite de la base (Bundler). Le serveur tourne via `tsx` (runtime, types ignores) -> aucun impact runtime, juste le typecheck aligne.
+- `ReunionWorldRoom.ts` : `startZone` etait `Zone | undefined` (`noUncheckedIndexedAccess`) ; mes usages respawn l'ont rendu visible. Fix : garde au chargement (`if (!startZone) throw`) -> narrowing pour tout le module.
+- Ces deux points ne bloquaient ni le zip (`release:web` = typecheck client seul) ni le runtime.

@@ -6,15 +6,21 @@ import { addWestBlockout } from "./westBlockout";
 import { addWestMoodboardScenic } from "./westScenic";
 import { addWestVegetation, type RuntimeCollider } from "./westVegetation";
 import { addFournaiseBlockout } from "./fournaise";
+import { addMafateHighlandAtmosphere } from "./mafateAtmosphere";
 
 // Callback de remontee des colliders props generes (vers WorldCollision).
 export type ColliderSink = (colliders: readonly RuntimeCollider[]) => void;
 
 type ZoneVisualMode = "west" | "fournaise" | "all";
+type WorldLightingRefs = {
+  hemi?: THREE.HemisphereLight;
+  sun?: THREE.DirectionalLight;
+};
 
 // Niveau de la mer : noie les cotes (terrain qui plonge sous 0), laisse le hub au sec.
 const seaLevel = -0.38;
 const beachY = 0.055;
+const worldLighting: WorldLightingRefs = {};
 
 export function configureWorld(scene: THREE.Scene, onColliders: ColliderSink = () => {}): void {
   const visualMode = getZoneVisualMode();
@@ -27,6 +33,7 @@ export function configureWorld(scene: THREE.Scene, onColliders: ColliderSink = (
   // Ciel tropical + rebond végétation sol (ground adouci pour ne pas verdir les plages).
   const hemi = new THREE.HemisphereLight(0xe8f4ff, 0x4f7c39, 1.78);
   scene.add(hemi);
+  worldLighting.hemi = hemi;
 
   // Soleil fin de matinée — chaud. Intensité abaissée (3.45 -> 2.9) : moins plat, ombres plus lisibles.
   const sun = new THREE.DirectionalLight(0xffe2a5, 2.9);
@@ -35,6 +42,7 @@ export function configureWorld(scene: THREE.Scene, onColliders: ColliderSink = (
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.bias = -0.0006; // réduit le bruit/acné d'ombre sur le relief
   scene.add(sun);
+  worldLighting.sun = sun;
 
   // Lagon tropical réunionnais — bicolore proche/large (moodboard B1) :
   // turquoise lagon près de l'origine -> bleu profond au large, via vertex colors.
@@ -64,12 +72,61 @@ export function configureWorld(scene: THREE.Scene, onColliders: ColliderSink = (
     // Vegetation luxuriante generee (seedee, ancree sol, corridor chemin, colliders serres).
     // Remplace l'ancien semis worldObjects (supprime). Colliders remontes a la collision.
     addWestVegetation(scene, onColliders);
+    addMafateHighlandAtmosphere(scene);
   }
   if (visualMode === "fournaise" || visualMode === "all") {
     // Props proceduraux zone volcan. Hors build ouest par defaut pour eviter deux DA visibles.
     addFournaiseBlockout(scene);
   }
   addBiomeDebugOverlays(scene);
+}
+
+const mafateBiome = WORLD_BIOMES.find((biome) => biome.id === "mafate");
+const baseSky = new THREE.Color(0x9ed3f2);
+const mafateSky = new THREE.Color(0xbfd0d6);
+const baseFog = new THREE.Color(0xb9dcef);
+const mafateFog = new THREE.Color(0xb6c2c8);
+const baseHemiSky = new THREE.Color(0xe8f4ff);
+const mafateHemiSky = new THREE.Color(0xd8e3e8);
+const baseHemiGround = new THREE.Color(0x4f7c39);
+const mafateHemiGround = new THREE.Color(0x34473b);
+const baseSun = new THREE.Color(0xffe2a5);
+const mafateSun = new THREE.Color(0xd9ded2);
+
+export function updateWorldAtmosphere(scene: THREE.Scene, position: THREE.Vector3, delta: number): void {
+  const target = getMafateAtmosphereWeight(position);
+  const lerpAlpha = Math.min(1, delta * 1.8);
+
+  const background = scene.background instanceof THREE.Color ? scene.background : new THREE.Color(baseSky);
+  background.lerpColors(baseSky, mafateSky, target);
+  scene.background = background;
+
+  if (!(scene.fog instanceof THREE.Fog)) {
+    scene.fog = new THREE.Fog(baseFog, 145, 360);
+  }
+  scene.fog.color.lerpColors(baseFog, mafateFog, target);
+  scene.fog.near = THREE.MathUtils.lerp(scene.fog.near, THREE.MathUtils.lerp(145, 72, target), lerpAlpha);
+  scene.fog.far = THREE.MathUtils.lerp(scene.fog.far, THREE.MathUtils.lerp(360, 235, target), lerpAlpha);
+
+  if (worldLighting.hemi) {
+    worldLighting.hemi.color.lerpColors(baseHemiSky, mafateHemiSky, target);
+    worldLighting.hemi.groundColor.lerpColors(baseHemiGround, mafateHemiGround, target);
+    worldLighting.hemi.intensity = THREE.MathUtils.lerp(worldLighting.hemi.intensity, THREE.MathUtils.lerp(1.78, 1.34, target), lerpAlpha);
+  }
+
+  if (worldLighting.sun) {
+    worldLighting.sun.color.lerpColors(baseSun, mafateSun, target);
+    worldLighting.sun.intensity = THREE.MathUtils.lerp(worldLighting.sun.intensity, THREE.MathUtils.lerp(2.9, 2.05, target), lerpAlpha);
+  }
+}
+
+function getMafateAtmosphereWeight(position: THREE.Vector3): number {
+  if (!mafateBiome) {
+    return 0;
+  }
+  const distance = mafateBiome.center.distanceTo(new THREE.Vector2(position.x, position.z));
+  const raw = 1 - THREE.MathUtils.clamp((distance - mafateBiome.radius * 0.55) / (mafateBiome.radius * 1.15), 0, 1);
+  return raw * raw * (3 - 2 * raw);
 }
 
 function getZoneVisualMode(): ZoneVisualMode {

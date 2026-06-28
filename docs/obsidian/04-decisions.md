@@ -406,6 +406,15 @@ Update 2026-06-26 (trame v2 + lisibilite plein soleil) :
 - Verifie en live (`pnpm dev`, localhost:5173) : panneau objectif nettement plus lisible, coins carres confirmes, multijoueur OK.
 - Filet de securite : `typecheck` + `lint` client = verts (CSS only, aucune regression TS/ESLint).
 
+Update 2026-06-27 (source design system HTML) :
+
+- Shan fournit `C:\Users\Shan li\Downloads\_Divers\Reunion Island Wisdom — HUD Design System.html`.
+- Decision : cet export redevient la source active des tokens HUD.
+- `tokens.css` est resynchronise dans `docs/design-system/hud/tokens.css` et `apps/game-client/src/design-tokens.css`.
+- Les essais locaux "coins carres" (`--r-disc:5px`) et trame `--hud-weave` deviennent des variantes documentees, pas la source active.
+- Pour compatibilite, `.riw-panel` utilise maintenant `background-color: var(--hud-panel)` + `background-image: var(--hud-weave, none)`.
+- Le runtime raccorde les boutons haut-centre, la mini-carte et le statut aux primitives `.riw-iconbtn`, `.riw-minimap`, `.riw-status`.
+
 ## ADR-013 - Depart Fournaise active + objectif auto-progressif par position
 
 Date : 2026-06-26
@@ -489,3 +498,156 @@ Validation :
 - Typecheck isole du bloc schema (tsc 6.0.3, strict) : 0 erreur.
 - tsc projet complet a relancer sous Windows (mount Linux tronque `protocol.ts` en sandbox).
 - Detail : [[iterations/2026-06-26-equipment-item-catalog]].
+
+## ADR-015 - Combat PvE leger (override bible « pas de combat »)
+
+Date : 2026-06-27
+Statut : accepte (decision explicite Shan), coeur serveur implemente, typecheck/lint complet a relancer sous Windows.
+
+Contexte :
+
+- `21-systeme-de-jeu.md` declarait : « Reunion Island Wisdom n'est pas un MMO de combat » ; combat/PvP hors V1.
+- Shan demande explicitement de commencer la logique de combat. Il assume le virage design.
+- Le terrain RGE ALTI est deja fiable (ADR-004 RESOLU 2026-06-05) : le combat n'est plus bloque par le relief.
+
+Decision :
+
+- Ajouter un combat PvE LEGER, serveur authoritative, sans toucher aux piliers exploration/entraide/culture.
+- Pas de PvP (les joueurs ne s'attaquent pas entre eux). Cibles = entites PvE stationnaires placees par zone.
+- Theme depart : aleas du volcan (Braise errante, Gardien de scorie, Souffle de l'Enclos) — pas de faune caricaturee.
+- Le client envoie une INTENTION d'attaque ciblee ; le serveur tranche portee, cooldown, degats, mort, respawn.
+
+Implementation (coeur, slice 1) :
+
+- `packages/shared/src/protocol.ts` :
+  - `attackIntentSchema` (intention client), `combatantSnapshotSchema` (cible dans le snapshot) ;
+  - `playerSnapshotSchema` etendu : `health` / `maxHealth` / `alive` ;
+  - `serverSnapshotSchema` etendu : `combatants[]` ;
+  - `combatConfig` (HP joueur 100, portee 4, cooldown 650 ms, degats 18, aggro cible 5, respawn joueur 4 s) ;
+  - `combatTargetDefinitionSchema` (data cible par zone).
+- `packages/content/data/combat-targets.json` : 3 cibles zone `piton-de-la-fournaise` (HP, degats contact, cooldown, respawn). Exporte via `content/src/index.ts`. Validees par `validate-content.ts` (zone existante + bornes monde + unicite).
+- `apps/game-server/src/combat/CombatSystem.ts` : module pur (zero Three/DOM/reseau) — resolution attaque (distance + cooldown serveur), riposte cible -> joueur a portee, mort/respawn cible, evenements combat.
+- `apps/game-server/src/rooms/ReunionWorldRoom.ts` : `onMessage("attack")` valide Zod -> `CombatSystem.attack` ; tick `update()` -> riposte + respawn joueur a `combatConfig.playerRespawnMs` ; joueur mort gele (pas de move) ; snapshot inclut `combatants`.
+
+Securite (verifie) :
+
+- portee + cooldown + degats decides SERVEUR (anti-triche) ; le client n'envoie qu'un `targetId` string borne ;
+- intention validee Zod, cooldown consomme uniquement sur attaque valide ;
+- pas de logique combat cote client (slice 1 = serveur seul) ; pas de secret expose.
+
+Validation :
+
+- Sanity logique reelle (`CombatSystem.ts` execute via Node strip-types, shim `combatConfig`, horloge simulee) : 17/17 verts (portee, degats 18, cooldown, mort 3 coups, respawn HP plein, riposte 5 + cooldown cible, mort joueur + event, joueur mort ne peut attaquer).
+- Integrite data cibles : 3 cibles, 0 erreur (zone valide, dans les bornes, IDs uniques).
+- `corepack pnpm typecheck` + `lint` (shared/content/server) : a relancer sous Windows (zod absent du sandbox).
+
+Consequence :
+
+- La bible `21-systeme-de-jeu.md` est amendee (section Combat) : le combat n'est plus exclu, mais reste LEGER et secondaire vs exploration.
+- Rendu client des cibles + barre de vie HUD + input attaque : slice 2 (non faite ici pour limiter la surface, cf. coordination ci-dessous).
+- `rewardTitle` quete pourra etre declenche par destruction de cible plus tard.
+
+Coordination (rappel ADR-013) :
+
+- Travail parallele actif le 2026-06-27 (fichiers non commites : `GameApp.ts`, `world.ts`, iterations Mafate/dialogue). Mes edits combat sont additifs et concentres serveur/shared/content pour limiter le clobber. `ReunionWorldRoom.ts` est partage : merge a surveiller.
+
+- Detail : [[iterations/2026-06-27-combat-core]].
+
+Update 2026-06-27 14:10 (slice 2 : rendu + HUD + input) :
+
+- Client : `render/combatants.ts` (cibles procedurales basalte + barre de vie billboard), barre de vie joueur reelle dans `ui/hud.ts` (distincte du mock gate `?hudMock`), input attaque touche `F` + bouton tactile, `network.sendAttack`, ancrage sol via `collision.sampleGround`.
+- Cible visee = la plus proche vivante dans `combatConfig.attackRange` ; le serveur revalide (portee/cooldown/degats).
+- Styles HUD inline (coins <= 5px, ADR-012) pour ne pas toucher `styles.css` (clobber parallele).
+- Limite : incoherence spawn ADR-013 non resolue -> lancer avec `?visualZone=fournaise` pour etre pres des cibles. typecheck/lint/test live a relancer sous Windows.
+
+Update 2026-06-27 (fix : degats non provoques + spawn) :
+
+- BUG : le joueur perdait des PV sans agir. Cause : cibles qui ripostaient sur TOUTE proximite (aggro 5), combinee au spawn serveur Fournaise pile au milieu des cibles.
+- FIX combat : passage en **aggro sur coup** (`CombatSystem` + `combatConfig.targetAggroDurationMs = 5000`). Une cible ne riposte que sur son attaquant recent, a portee. Plus aucun degat par simple proximite. Aggro purgee a la mort/respawn cible, mort/depart joueur (`forgetPlayer`).
+- FIX spawn : `GameApp.getInitialSpawn()` defaut bascule sur `FOURNAISE_SPAWN` (aligne serveur + ADR-008/013). Ouest devient opt-in `?visualZone=ouest`. Resout la desync client/serveur signalee ADR-013 dans le sens deja choisi (Fournaise depart).
+- Tests : sanity logique 20/20 (dont non-regression « zero degat sans attaquer », aggro mono-cible, expiration d'aggro). Detail [[iterations/2026-06-27-combat-core]].
+
+Update 2026-06-27 (slice 3 : feedback + son + recompense) :
+
+- Feedback de coup : flash emissive + pop d'echelle sur cible touchee, anim de mort courte, flash rouge plein ecran quand le joueur prend des degats (detection des deltas de PV cote client, snapshot).
+- Son : module `apps/game-client/src/audio/sfx.ts` — SFX procedural Web Audio (oscillateurs + enveloppe), **aucun asset audio** (zero licence a tracer), aucune dependance. `resumeAudio()` sur premier geste (autoplay). Sons : swing / hit / kill / playerHurt / playerDown.
+- Recompense : champ `reward` (souvenir) par cible dans `combat-targets.json` + `targetDefeatedSchema`. Sur kill, le serveur envoie `targetDefeated` au tueur uniquement (authoritative) -> notif HUD. Pas encore stocke (inventaire serveur = backlog).
+- Equilibrage : valeurs conservees (intro coherente), analyse TTK documentee, knobs centralises (`combatConfig` + data cible). Reglage fin = playtest live.
+- Validation : `node --check` strip-types OK sur les 6 fichiers ; typecheck/lint complet a relancer sous Windows.
+
+## ADR-016 - Zone de depart = Ouest (Saint-Paul / Saint-Gilles), client + serveur alignes
+
+Date : 2026-06-27
+Statut : accepte (choix explicite Shan), revert d'ADR-008.
+
+Contexte :
+
+- Deux directions paralleles coexistaient (cf. ADR-013) : serveur depart Fournaise (ADR-008) vs client depart Ouest (spawn-zone-sync de Codex). D'ou la desync client/serveur.
+- Trancher etait necessaire (sinon le joueur subit des degats « invisibles » : serveur a un endroit, client a un autre).
+
+Decision (Shan) :
+
+- Zone de depart par defaut = **Ouest (Saint-Paul / Saint-Gilles)**, comme la note Codex spawn-zone-sync.
+- Client `GameApp.getInitialSpawn()` : defaut `WEST_BLOCKOUT_SPAWN` ; Fournaise via `?visualZone=fournaise` ; `?spawn=maido` debug.
+- Serveur `ReunionWorldRoom.startZone` : `saint-paul-saint-gilles` (aligne le client).
+- Annule la decision ADR-008 (Fournaise = depart).
+
+Consequence :
+
+- Client et serveur coherents -> plus de degats non provoques par desync.
+- **Combat dormant au spawn par defaut** : les cibles (`combat-targets.json`) sont en zone `piton-de-la-fournaise`, loin de l'Ouest. A faire : placer des cibles en zone Ouest (level design) pour que le combat soit jouable au depart, OU prevoir un passage de zone coherent client+serveur.
+- Dette coherence (contestee multi-agents, non touchee ici) : `activeEvent = "eveil-fournaise"` + l'objectif HUD « Eveil de la Fournaise » referencent encore la Fournaise alors que le depart est Ouest -> a reconcilier dans une passe HUD/objectif dediee.
+
+Detail : [[iterations/2026-06-27-spawn-zone-sync]], [[iterations/2026-06-27-combat-core]].
+
+## ADR-017 - Terrain DEM : GeoTIFF, projection RGR92/UTM40S et contrat LOD
+
+Date : 2026-06-27
+Statut : accepte, implementation initiale.
+
+Contexte :
+
+- La phase terrain demandait de passer du support ASC seul a un pipeline capable de lire aussi `.tif/.tiff`.
+- Le risque principal reste le decalage monde : projection source, centre UTM et scale doivent etre explicites dans les manifests.
+- Le streaming chunks existe deja, mais le LOD mobile n'avait pas encore de contrat de donnees.
+
+Decision :
+
+- Ajouter `geotiff` en dependance dev racine, utilisee uniquement par `tools/build-lareunion-dem-terrain.mjs`.
+- Garder le client sans dependance GeoTIFF : le navigateur consomme seulement les GLB/JSON generes.
+- Normaliser les manifests terrain autour de `RGR92 / UTM zone 40S`, EPSG:2975, unite metres.
+- Recentrer le monde via le centre du bbox source UTM (`center.easting`, `center.northing`) et `metersToWorldScale`.
+- Ajouter un contrat `lodLevels` aux manifests : niveau 0 full genere, niveau 1 mobile-low a produire.
+- Fixer le budget cible terrain seul : 60 fps desktop, 30 fps mobile.
+
+Consequence :
+
+- Le pipeline accepte ASC et GeoTIFF sans changer le runtime.
+- Les assets deja generes restent a regenerer pour porter ces nouveaux champs dans les JSON publics.
+- Le LOD mobile n'est pas encore livre : il faut produire les GLB/heightfields niveau 1 et choisir la regle de selection runtime.
+
+Detail : [[11-phase-0-terrain]], [[iterations/2026-06-27-terrain-geotiff-projection-lod]].
+
+## ADR-018 — Invariant slot bidirectionnel pour les definitions d'objets (2026-06-27)
+
+Statut : accepte.
+
+Contexte :
+
+- Le schema partage `itemDefinitionSchema` (`packages/shared/src/protocol.ts`) ne contraignait que la categorie `equipement` (slot reel obligatoire).
+- Sens inverse non verrouille : un `consommable` / `cle` / `ressource` pouvait porter un slot et passer la validation. Repere au run TEST equipment.
+
+Decision :
+
+- Categories equipables centralisees : `equippableCategories = ["equipement", "instrument"]` (un instrument se tient en main).
+- Invariant slot dans les deux sens, applique dans `superRefine` :
+  - categorie equipable -> slot != `aucun` ;
+  - categorie non equipable -> slot `aucun`.
+
+Consequence :
+
+- Renforce la validation serveur authoritative (donnees objets coherentes par construction).
+- Catalogue actuel deja conforme : 0 regression (verifie zod 4.4.3 reel).
+- Toute future definition incoherente (objet non portable avec un slot, ou inversement) est rejetee a la source.
+
+Detail : [[iterations/2026-06-27-fix-equipment-invariant-slot]].

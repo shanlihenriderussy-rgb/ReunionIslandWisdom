@@ -1,7 +1,9 @@
 import { Client, Room } from "colyseus";
-import { npcs, zones } from "@riw/content";
+import { combatTargets, npcs, zones } from "@riw/content";
 import {
+  attackIntentSchema,
   chatMessageSchema,
+  combatConfig,
   interactIntentSchema,
   npcInteractionDistance,
   moveIntentSchema,
@@ -13,6 +15,7 @@ import {
   type PlayerSnapshotDto,
   type ServerSnapshot
 } from "@riw/shared";
+import { CombatSystem } from "../combat/CombatSystem.js";
 
 type ClientAuth = {
   name?: string;
@@ -23,7 +26,10 @@ type PlayerRuntimeState = PlayerSnapshotDto;
 const maxChatEntries = 8;
 const chatCooldownMs = 900;
 const interactionCooldownMs = 500;
-const startZone = zones.find((zone) => zone.id === "piton-de-la-fournaise") ?? zones[0];
+type ZoneDefinition = (typeof zones)[number];
+
+// Zone de depart = Ouest (Saint-Paul / Saint-Gilles), choix Shan 2026-06-27 (aligne client getInitialSpawn).
+const startZone = resolveStartZone();
 
 export class ReunionWorldRoom extends Room {
   maxClients = 50;
@@ -32,7 +38,10 @@ export class ReunionWorldRoom extends Room {
   private readonly lastChatAt = new Map<string, number>();
   private readonly lastInteractionAt = new Map<string, number>();
   private readonly chat: ChatEntryDto[] = [];
-  private activeEvent = "eveil-fournaise";
+  private readonly combat = new CombatSystem(combatTargets);
+  private readonly respawnAt = new Map<string, number>();
+  // Event derive de la zone de depart reelle (coherence : evite "eveil-fournaise" en depart Ouest).
+  private activeEvent = `eveil-${startZone.id}`;
 
   onCreate(): void {
     this.setSimulationInterval((deltaTime) => this.update(deltaTime), 1000 / serverTickRate);
@@ -102,6 +111,35 @@ export class ReunionWorldRoom extends Room {
         line: npc.line
       });
     });
+
+    this.onMessage("attack", (client, message: unknown) => {
+      const player = this.players.get(client.sessionId);
+      if (!player) {
+        return;
+      }
+
+      const result = attackIntentSchema.safeParse(message);
+      if (!result.success) {
+        return;
+      }
+
+      // Portee + cooldown + degats decides par le serveur.
+      const outcome = this.combat.attack(player, result.data.targetId, Date.now());
+      if (outcome.ok) {
+        if (outcome.killed) {
+          // Recompense serveur-authoritative : envoyee uniquement au tueur.
+          const def = combatTargets.find((target) => target.id === result.data.targetId);
+          if (def) {
+            client.send("targetDefeated", {
+              targetId: def.id,
+              targetName: def.name,
+              reward: def.reward
+            });
+          }
+        }
+        this.broadcastSnapshot();
+      }
+    });
   }
 
   onJoin(client: Client, options: ClientAuth): void {
@@ -112,6 +150,9 @@ export class ReunionWorldRoom extends Room {
       y: startZone.spawn.y,
       z: randomSpawnCoordinate(startZone.spawn.z),
       yaw: startZone.spawn.yaw,
+      health: combatConfig.playerMaxHealth,
+      maxHealth: combatConfig.playerMaxHealth,
+      alive: true,
       lastSequence: 0
     };
 
@@ -125,16 +166,24 @@ export class ReunionWorldRoom extends Room {
     this.moveIntents.delete(client.sessionId);
     this.lastChatAt.delete(client.sessionId);
     this.lastInteractionAt.delete(client.sessionId);
+    this.respawnAt.delete(client.sessionId);
+    this.combat.forgetPlayer(client.sessionId);
     this.broadcastSnapshot();
   }
 
   private update(deltaTimeMs: number): void {
     const deltaSeconds = deltaTimeMs / 1000;
+    const now = Date.now();
     let changed = false;
 
     for (const [sessionId, intent] of this.moveIntents) {
       const player = this.players.get(sessionId);
       if (!player) {
+        continue;
+      }
+
+      // Un joueur mort ne bouge pas tant qu'il n'a pas respawn.
+      if (!player.alive) {
         continue;
       }
 
@@ -156,6 +205,36 @@ export class ReunionWorldRoom extends Room {
       player.z = clamp(player.z + worldZ * playerMoveSpeed * deltaSeconds, worldBounds.minZ, worldBounds.maxZ);
       player.yaw = Math.atan2(worldX, worldZ);
       player.lastSequence = intent.sequence;
+      changed = true;
+    }
+
+    // Combat : respawn cibles + riposte sur joueurs a portee.
+    const combatEvents = this.combat.update(now, this.players.values());
+    for (const event of combatEvents) {
+      if (event.type === "playerKilled" && !this.respawnAt.has(event.playerId)) {
+        this.respawnAt.set(event.playerId, now + combatConfig.playerRespawnMs);
+      }
+      changed = true;
+    }
+
+    // Respawn des joueurs morts dont le delai est ecoule.
+    for (const [sessionId, at] of this.respawnAt) {
+      if (now < at) {
+        continue;
+      }
+      const player = this.players.get(sessionId);
+      this.respawnAt.delete(sessionId);
+      if (!player) {
+        continue;
+      }
+      player.x = randomSpawnCoordinate(startZone.spawn.x);
+      player.y = startZone.spawn.y;
+      player.z = randomSpawnCoordinate(startZone.spawn.z);
+      player.yaw = startZone.spawn.yaw;
+      player.health = player.maxHealth;
+      player.alive = true;
+      this.moveIntents.delete(sessionId);
+      this.combat.forgetPlayer(sessionId);
       changed = true;
     }
 
@@ -185,6 +264,7 @@ export class ReunionWorldRoom extends Room {
   private createSnapshot(): ServerSnapshot {
     return {
       players: Array.from(this.players.values()),
+      combatants: this.combat.snapshots(),
       chat: this.chat,
       activeEvent: this.activeEvent
     };
@@ -197,6 +277,14 @@ function clamp(value: number, min: number, max: number): number {
 
 function randomSpawnCoordinate(origin: number): number {
   return Math.round((origin + Math.random() * 1.2 - 0.6) * 10) / 10;
+}
+
+function resolveStartZone(): ZoneDefinition {
+  const zone = zones.find((candidate) => candidate.id === "saint-paul-saint-gilles") ?? zones[0];
+  if (!zone) {
+    throw new Error("@riw/content : aucune zone de depart definie (zones.json vide).");
+  }
+  return zone;
 }
 
 function sanitizeName(name: string | undefined): string {

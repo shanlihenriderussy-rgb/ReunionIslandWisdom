@@ -31,6 +31,34 @@ const chunkCountZ = readNumberArg("chunkCountZ", 4);
 const verticalExaggeration = readNumberArg("verticalExaggeration", 1.15);
 const coastlineY = 0.04;
 const seaFloorY = -0.42;
+const terrainSourceName = "IGN RGE ALTI D974";
+const terrainProjection = {
+  name: "RGR92 / UTM zone 40S",
+  epsg: 2975,
+  zone: "40S",
+  units: "meters",
+  falseEasting: 500000,
+  falseNorthing: 10000000
+};
+const terrainPerfBudget = {
+  desktopFps: 60,
+  mobileFps: 30,
+  scope: "terrain seul"
+};
+const terrainLodContract = [
+  {
+    level: 0,
+    label: "full",
+    source: "generated",
+    chunkRadius: 1
+  },
+  {
+    level: 1,
+    label: "mobile-low",
+    source: "pending-generation",
+    chunkRadius: 2
+  }
+];
 
 class NodeFileReader {
   result = null;
@@ -176,6 +204,11 @@ async function readTiffHeader(filePath) {
   const image = await tiff.getImage();
   const bbox = image.getBoundingBox();
   const [minX, minY, maxX, maxY] = bbox;
+  const resolution = image.getResolution?.();
+  const geoKeys = image.getGeoKeys?.();
+  if (![minX, minY, maxX, maxY].every(Number.isFinite) || minX >= maxX || minY >= maxY) {
+    throw new Error(`Bounding box GeoTIFF invalide: ${filePath}`);
+  }
   return {
     filePath,
     kind: "tiff",
@@ -186,7 +219,9 @@ async function readTiffHeader(filePath) {
     maxX,
     minY,
     maxY,
-    nodata: image.getGDALNoData()
+    nodata: image.getGDALNoData(),
+    resolution: Array.isArray(resolution) ? resolution : undefined,
+    geoKeys
   };
 }
 
@@ -211,14 +246,35 @@ function mergeBounds(headers) {
   };
 }
 
-function projectOutlineToGame(ring, sourceBounds) {
-  const projected = ring.map(([lon, lat]) => lonLatToUtm40S(lon, lat));
+function createWorldMapping(sourceBounds) {
   const sourceWidth = sourceBounds.maxX - sourceBounds.minX;
   const sourceHeight = sourceBounds.maxY - sourceBounds.minY;
-  const scale = targetLongestSide / Math.max(sourceWidth, sourceHeight);
+  const metersToWorldScale = targetLongestSide / Math.max(sourceWidth, sourceHeight);
+  const centerEasting = (sourceBounds.minX + sourceBounds.maxX) / 2;
+  const centerNorthing = (sourceBounds.minY + sourceBounds.maxY) / 2;
+  return {
+    projection: terrainProjection,
+    sourceBounds,
+    center: {
+      easting: Number(centerEasting.toFixed(3)),
+      northing: Number(centerNorthing.toFixed(3))
+    },
+    metersToWorldScale,
+    targetLongestSide,
+    worldBounds: {
+      minX: Number((-(sourceWidth / 2) * metersToWorldScale).toFixed(4)),
+      maxX: Number(((sourceWidth / 2) * metersToWorldScale).toFixed(4)),
+      minZ: Number((-(sourceHeight / 2) * metersToWorldScale).toFixed(4)),
+      maxZ: Number(((sourceHeight / 2) * metersToWorldScale).toFixed(4))
+    }
+  };
+}
+
+function projectOutlineToGame(ring, mapping) {
+  const projected = ring.map(([lon, lat]) => lonLatToUtm40S(lon, lat));
   return projected.map((point) => ({
-    x: (point.x - (sourceBounds.minX + sourceBounds.maxX) / 2) * scale,
-    z: (point.y - (sourceBounds.minY + sourceBounds.maxY) / 2) * scale
+    x: (point.x - mapping.center.easting) * mapping.metersToWorldScale,
+    z: (point.y - mapping.center.northing) * mapping.metersToWorldScale
   }));
 }
 
@@ -264,14 +320,11 @@ function degToRad(value) {
   return (value * Math.PI) / 180;
 }
 
-function worldFromSource(x, y, sourceBounds) {
-  const sourceWidth = sourceBounds.maxX - sourceBounds.minX;
-  const sourceHeight = sourceBounds.maxY - sourceBounds.minY;
-  const scale = targetLongestSide / Math.max(sourceWidth, sourceHeight);
+function worldFromSource(x, y, mapping) {
   return {
-    x: (x - (sourceBounds.minX + sourceBounds.maxX) / 2) * scale,
-    z: (y - (sourceBounds.minY + sourceBounds.maxY) / 2) * scale,
-    scale
+    x: (x - mapping.center.easting) * mapping.metersToWorldScale,
+    z: (y - mapping.center.northing) * mapping.metersToWorldScale,
+    scale: mapping.metersToWorldScale
   };
 }
 
@@ -658,7 +711,7 @@ async function cleanChunkOutputs() {
   );
 }
 
-async function exportTerrainChunks(projectedBounds, outline, heights, heightsMeters, globalNormals) {
+async function exportTerrainChunks(projectedBounds, outline, heights, heightsMeters, globalNormals, worldMapping) {
   await cleanChunkOutputs();
   const chunks = [];
   const ranges = buildChunkRanges();
@@ -689,11 +742,14 @@ async function exportTerrainChunks(projectedBounds, outline, heights, heightsMet
     const heightfieldPathChunk = path.join(chunkOutputDir, heightfieldFile);
     const localBounds = chunkBounds(projectedBounds, range);
     const heightfield = {
-      source: "IGN RGE ALTI D974",
+      source: terrainSourceName,
       kind: "terrain-chunk-heightfield",
+      projection: terrainProjection,
+      worldMapping,
       index,
       cx: range.cx,
       cz: range.cz,
+      lodLevel: 0,
       bounds: localBounds,
       gridX: slicedHeights.localGridX,
       gridZ: slicedHeights.localGridZ,
@@ -711,6 +767,13 @@ async function exportTerrainChunks(projectedBounds, outline, heights, heightsMet
       gridZ: slicedHeights.localGridZ,
       file: `/assets/terrain/lareunion/chunks/${glbFile}`,
       heightfield: `/assets/terrain/lareunion/chunks/${heightfieldFile}`,
+      lods: [
+        {
+          level: 0,
+          file: `/assets/terrain/lareunion/chunks/${glbFile}`,
+          heightfield: `/assets/terrain/lareunion/chunks/${heightfieldFile}`
+        }
+      ],
       triangles: mesh.geometry.index ? mesh.geometry.index.count / 3 : 0,
       runtimeVertices: mesh.geometry.getAttribute("position").count,
       bytes: fs.statSync(glbPathChunk).size,
@@ -719,8 +782,12 @@ async function exportTerrainChunks(projectedBounds, outline, heights, heightsMet
   }
 
   const manifest = {
-    source: "IGN RGE ALTI D974",
+    source: terrainSourceName,
     kind: "terrain-stream-manifest",
+    projection: terrainProjection,
+    worldMapping,
+    lodLevels: terrainLodContract,
+    perfBudget: terrainPerfBudget,
     chunkCountX,
     chunkCountZ,
     gridX,
@@ -772,13 +839,9 @@ async function main() {
 
   const headers = await readSourceHeaders(files);
   const sourceBounds = mergeBounds(headers);
-  const outline = projectOutlineToGame(outlineRing, sourceBounds);
-  const projectedBounds = {
-    minX: -((sourceBounds.maxX - sourceBounds.minX) / 2) * (targetLongestSide / Math.max(sourceBounds.maxX - sourceBounds.minX, sourceBounds.maxY - sourceBounds.minY)),
-    maxX: ((sourceBounds.maxX - sourceBounds.minX) / 2) * (targetLongestSide / Math.max(sourceBounds.maxX - sourceBounds.minX, sourceBounds.maxY - sourceBounds.minY)),
-    minZ: -((sourceBounds.maxY - sourceBounds.minY) / 2) * (targetLongestSide / Math.max(sourceBounds.maxX - sourceBounds.minX, sourceBounds.maxY - sourceBounds.minY)),
-    maxZ: ((sourceBounds.maxY - sourceBounds.minY) / 2) * (targetLongestSide / Math.max(sourceBounds.maxX - sourceBounds.minX, sourceBounds.maxY - sourceBounds.minY))
-  };
+  const worldMapping = createWorldMapping(sourceBounds);
+  const outline = projectOutlineToGame(outlineRing, worldMapping);
+  const projectedBounds = worldMapping.worldBounds;
 
   const accum = {
     sums: Array.from({ length: gridX * gridZ }, () => 0),
@@ -810,10 +873,12 @@ async function main() {
   await fsp.mkdir(outputDir, { recursive: true });
   const glb = await exportGlb(scene);
   await fsp.writeFile(glbPath, Buffer.from(glb));
-  const chunkManifest = await exportTerrainChunks(projectedBounds, outline, heights, heightsMeters, globalNormals);
+  const chunkManifest = await exportTerrainChunks(projectedBounds, outline, heights, heightsMeters, globalNormals, worldMapping);
 
   const collision = {
-    source: "IGN RGE ALTI D974",
+    source: terrainSourceName,
+    projection: terrainProjection,
+    worldMapping,
     bounds: projectedBounds,
     gridX,
     gridZ,
@@ -823,9 +888,12 @@ async function main() {
   await fsp.writeFile(collisionPath, `${JSON.stringify(collision)}\n`);
 
   const heightfield = {
-    source: "IGN RGE ALTI D974",
+    source: terrainSourceName,
+    projection: terrainProjection,
+    worldMapping,
     sourceBounds,
     horizontalScale,
+    verticalExaggeration,
     minElevation,
     maxElevation,
     gridX,
@@ -835,11 +903,15 @@ async function main() {
   await fsp.writeFile(heightfieldPath, `${JSON.stringify(heightfield)}\n`);
 
   const manifest = {
-    source: "IGN RGE ALTI D974",
+    source: terrainSourceName,
     sourceDir: path.relative(root, sourceDir).replaceAll("\\", "/"),
     inputFiles: files.map((file) => path.relative(root, file).replaceAll("\\", "/")),
     sourceOutline: "packages/assets/sources/lareunion/lareunion-osm-outline.geojson",
     license: "Licence Ouverte / Etalab 2.0 pour RGE ALTI, ODbL pour contour OSM",
+    projection: terrainProjection,
+    worldMapping,
+    lodLevels: terrainLodContract,
+    perfBudget: terrainPerfBudget,
     targetLongestSide,
     gridX,
     gridZ,
@@ -856,6 +928,7 @@ async function main() {
     chunks: chunkManifest.chunks.map((chunk) => ({
       file: chunk.file,
       heightfield: chunk.heightfield,
+      lods: chunk.lods,
       bounds: chunk.bounds,
       triangles: chunk.triangles,
       runtimeVertices: chunk.runtimeVertices,

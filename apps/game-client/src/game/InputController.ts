@@ -26,6 +26,8 @@ export class InputController {
   private dragging = false;
   private cameraDelta: Vector2 = { x: 0, y: 0 };
   private interactPressed = false;
+  private attackPressed = false;
+  private jumpPressed = false;
   // Vecteur deplacement tactile (joystick HUD mobile), combine avec le clavier.
   private touch: MovementVector = { x: 0, z: 0 };
 
@@ -63,6 +65,11 @@ export class InputController {
     this.interactPressed = true;
   }
 
+  // Bouton attaque HUD mobile : equivalent touche F.
+  pressAttack(): void {
+    this.attackPressed = true;
+  }
+
   getCameraDelta(): Vector2 {
     const delta = this.cameraDelta;
     this.cameraDelta = { x: 0, y: 0 };
@@ -75,6 +82,18 @@ export class InputController {
     return pressed;
   }
 
+  consumeAttackPressed(): boolean {
+    const pressed = this.attackPressed;
+    this.attackPressed = false;
+    return pressed;
+  }
+
+  consumeJumpPressed(): boolean {
+    const pressed = this.jumpPressed;
+    this.jumpPressed = false;
+    return pressed;
+  }
+
   resetMovement(): void {
     this.keys.forward = false;
     this.keys.backward = false;
@@ -82,6 +101,7 @@ export class InputController {
     this.keys.right = false;
     this.dragging = false;
     this.cameraDelta = { x: 0, y: 0 };
+    this.jumpPressed = false;
     this.touch = { x: 0, z: 0 };
   }
 
@@ -92,6 +112,18 @@ export class InputController {
 
     if (event.code === "KeyE") {
       this.interactPressed = true;
+      event.preventDefault();
+      return;
+    }
+
+    if (event.code === "KeyF") {
+      this.attackPressed = true;
+      event.preventDefault();
+      return;
+    }
+
+    if (event.code === "Space") {
+      this.jumpPressed = true;
       event.preventDefault();
       return;
     }

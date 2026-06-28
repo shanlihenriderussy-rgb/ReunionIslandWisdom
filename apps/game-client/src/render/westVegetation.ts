@@ -17,6 +17,22 @@ type TerrainCollisionData = {
   heights: number[];
 };
 
+// Heightfield d'un chunk RGE ALTI (meme structure que collision.ts) : c'est CE relief
+// qui est rendu a l'ecran et sur lequel marche le joueur. La vegetation doit s'y poser
+// (sinon elle flotte : reliefCollision global != surface visible des chunks).
+type ChunkHeightfieldData = {
+  bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
+  gridX: number;
+  gridZ: number;
+  heights: Array<number | null>;
+};
+
+type ChunkManifestData = {
+  source?: string;
+  kind?: string;
+  chunks?: Array<{ heightfield?: string }>;
+};
+
 export type RuntimeCollider = { kind: "circle"; x: number; z: number; radius: number };
 
 type VegetationBatch = {
@@ -41,9 +57,15 @@ export function addWestVegetation(
   scene: THREE.Scene,
   onColliders?: (colliders: RuntimeCollider[]) => void
 ): void {
-  void fetch(terrainAssets.laReunion.reliefCollision)
-    .then((response) => (response.ok ? response.json() : null))
-    .then((terrain: TerrainCollisionData | null) => {
+  // Charge en parallele : silhouette/collision globale (filtrage) + heightfields de chunks
+  // (placement au sol visible, identique au joueur).
+  void Promise.all([
+    fetch(terrainAssets.laReunion.reliefCollision)
+      .then((response) => (response.ok ? (response.json() as Promise<TerrainCollisionData>) : null))
+      .catch(() => null),
+    loadChunkHeightfields()
+  ])
+    .then(([terrain, chunks]) => {
       if (!terrain) {
         return;
       }
@@ -66,7 +88,7 @@ export function addWestVegetation(
           batch = { url: cand.url, materialMode, specs: [] };
           batches.set(batchKey, batch);
         }
-        batch.specs.push(instanceSpecFor(cand, terrain));
+        batch.specs.push(instanceSpecFor(cand, terrain, chunks));
         if (cand.colliderRadius > 0) {
           colliders.push({ kind: "circle", x: cand.x, z: cand.z, radius: cand.colliderRadius });
         }
@@ -120,9 +142,15 @@ function accept(cand: VegCandidate, terrain: TerrainCollisionData): boolean {
 
 // Convertit un candidat en spec d'instance : meme placement que l'ancien createProp
 // (sol + 0.02, tilt borne selon le type), scale/rotation portes par l'InstancedMesh.
-function instanceSpecFor(cand: VegCandidate, terrain: TerrainCollisionData): GltfInstanceSpec {
+// IMPORTANT : la hauteur sol vient des chunks (relief visible) pour ne pas flotter.
+function instanceSpecFor(
+  cand: VegCandidate,
+  terrain: TerrainCollisionData,
+  chunks: ChunkHeightfieldData[]
+): GltfInstanceSpec {
+  const groundY = groundHeight(terrain, chunks, cand.x, cand.z);
   return {
-    position: new THREE.Vector3(cand.x, sampleHeight(terrain, cand.x, cand.z) + 0.02, cand.z),
+    position: new THREE.Vector3(cand.x, groundY + 0.02, cand.z),
     quaternion: terrainTiltQuaternion(terrain, cand.x, cand.z, maxTiltForCandidate(cand)),
     targetHeight: cand.height,
     rotationY: cand.rot
@@ -201,6 +229,92 @@ function slopeAt(terrain: TerrainCollisionData, x: number, z: number): number {
   const hx = Math.abs(sampleHeight(terrain, x + 1, z) - h);
   const hz = Math.abs(sampleHeight(terrain, x, z + 1) - h);
   return Math.max(hx, hz);
+}
+
+// Hauteur de sol POSE : chunks RGE ALTI (relief visible) d'abord, sinon collision globale.
+// Identique a la logique joueur (collision.ts getGroundHeight) -> la vegetation ne flotte plus.
+function groundHeight(
+  terrain: TerrainCollisionData,
+  chunks: ChunkHeightfieldData[],
+  x: number,
+  z: number
+): number {
+  for (const chunk of chunks) {
+    if (!isInsideBounds(x, z, chunk.bounds)) {
+      continue;
+    }
+    const h = sampleChunkHeight(chunk, x, z);
+    if (h !== null) {
+      return h;
+    }
+  }
+  return sampleHeight(terrain, x, z);
+}
+
+function isInsideBounds(
+  x: number,
+  z: number,
+  bounds: { minX: number; maxX: number; minZ: number; maxZ: number }
+): boolean {
+  return x >= bounds.minX && x <= bounds.maxX && z >= bounds.minZ && z <= bounds.maxZ;
+}
+
+async function loadChunkHeightfields(): Promise<ChunkHeightfieldData[]> {
+  try {
+    const response = await fetch(terrainAssets.laReunion.chunkManifest);
+    if (!response.ok) {
+      return [];
+    }
+    const manifest = (await response.json()) as ChunkManifestData;
+    if (manifest.source !== "IGN RGE ALTI D974" || manifest.kind !== "terrain-stream-manifest") {
+      return [];
+    }
+    const entries = manifest.chunks ?? [];
+    const chunks = await Promise.all(
+      entries.map(async (entry) => {
+        if (!entry.heightfield) {
+          return null;
+        }
+        const chunkResponse = await fetch(entry.heightfield);
+        if (!chunkResponse.ok) {
+          return null;
+        }
+        return (await chunkResponse.json()) as ChunkHeightfieldData;
+      })
+    );
+    return chunks.filter((chunk): chunk is ChunkHeightfieldData => chunk !== null);
+  } catch {
+    return [];
+  }
+}
+
+function sampleChunkHeight(terrain: ChunkHeightfieldData, x: number, z: number): number | null {
+  const { bounds, gridX, gridZ, heights } = terrain;
+  const tx = THREE.MathUtils.clamp((x - bounds.minX) / (bounds.maxX - bounds.minX), 0, 1);
+  const tz = THREE.MathUtils.clamp((z - bounds.minZ) / (bounds.maxZ - bounds.minZ), 0, 1);
+  const gx = tx * (gridX - 1);
+  const gz = tz * (gridZ - 1);
+  const x0 = Math.floor(gx);
+  const z0 = Math.floor(gz);
+  const x1 = Math.min(gridX - 1, x0 + 1);
+  const z1 = Math.min(gridZ - 1, z0 + 1);
+  const fx = gx - x0;
+  const fz = gz - z0;
+  const h00 = finiteAt(heights, z0 * gridX + x0);
+  const h10 = finiteAt(heights, z0 * gridX + x1);
+  const h01 = finiteAt(heights, z1 * gridX + x0);
+  const h11 = finiteAt(heights, z1 * gridX + x1);
+  if (h00 === null || h10 === null || h01 === null || h11 === null) {
+    return null;
+  }
+  const hx0 = THREE.MathUtils.lerp(h00, h10, fx);
+  const hx1 = THREE.MathUtils.lerp(h01, h11, fx);
+  return THREE.MathUtils.lerp(hx0, hx1, fz);
+}
+
+function finiteAt(heights: ReadonlyArray<number | null>, index: number): number | null {
+  const h = heights[index];
+  return typeof h === "number" && Number.isFinite(h) ? h : null;
 }
 
 function sampleHeight(terrain: TerrainCollisionData, x: number, z: number): number {

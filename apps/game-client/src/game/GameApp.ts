@@ -1,15 +1,15 @@
 import * as THREE from "three";
-import { playerMoveSpeed } from "@riw/shared";
+import { combatConfig, playerMoveSpeed } from "@riw/shared";
 import { InputController } from "./InputController";
 import { updateFollowCamera } from "./camera";
 import { WorldCollision } from "./collision";
-import { NetworkClient } from "../network/NetworkClient";
+import { NetworkClient, type NetworkSnapshot } from "../network/NetworkClient";
 import { createHud, type HudController } from "../ui/hud";
-import { configureWorld } from "../render/world";
+import { configureWorld, updateWorldAtmosphere } from "../render/world";
 import { getBiomeAtPosition } from "../world/biomes";
 import { WEST_BLOCKOUT_PATH, WEST_BLOCKOUT_SPAWN } from "../world/westBlockout";
 import { createChunkStreamer, type ChunkStreamer } from "./ChunkStreamer";
-import { updateFournaiseFx } from "../render/fournaise";
+import { updateFournaiseFx, FOURNAISE_SPAWN } from "../render/fournaise";
 import { updateWestWaterFx } from "../render/westScenic";
 import {
   addNpcViews,
@@ -26,6 +26,8 @@ import {
   updatePlayerWalkAnimation,
   type RemotePlayerView
 } from "../render/players";
+import { syncCombatants, disposeCombatants, type CombatantView } from "../render/combatants";
+import { sfx, resumeAudio } from "../audio/sfx";
 
 type PerfSnapshot = {
   fps: number;
@@ -52,6 +54,10 @@ declare global {
   }
 }
 
+const jumpVelocity = 5.4;
+const gravity = 14;
+const groundSnapTolerance = 0.08;
+
 export class GameApp {
   private readonly shell: HTMLDivElement;
   private readonly renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -65,6 +71,7 @@ export class GameApp {
   private readonly cameraPivot = new THREE.Group();
   private readonly localPlayer = createLocalPlayerMesh();
   private readonly remotePlayers = new Map<string, RemotePlayerView>();
+  private readonly combatantViews = new Map<string, CombatantView>();
   private readonly npcViews: NpcView[] = [];
   private readonly lastLocalPlayerPosition = new THREE.Vector3();
   private readonly chunkStreamer: ChunkStreamer = createChunkStreamer(this.scene, { radius: 1, maxConcurrent: 2 });
@@ -73,6 +80,8 @@ export class GameApp {
   private sequence = 0;
   private animationFrame = 0;
   private cameraYaw = 0;
+  private verticalVelocity = 0;
+  private grounded = true;
   private activeZoneLabel = "Saint-Paul / Saint-Gilles";
   private fpsAccum = 0;
   private fpsFrames = 0;
@@ -130,7 +139,7 @@ export class GameApp {
   private configureScene(): void {
     // Les colliders des props generes (vegetation ouest) sont injectes une fois poses au sol.
     configureWorld(this.scene, (colliders) => this.collision.addColliders(colliders));
-    const spawn = getInitialWestSpawn();
+    const spawn = getInitialSpawn();
     this.cameraYaw = spawn.yaw;
     this.cameraPivot.position.set(spawn.x, spawn.y, spawn.z);
     this.collision.snapToGround(this.cameraPivot.position);
@@ -176,6 +185,18 @@ export class GameApp {
       delta
     );
 
+    // Cibles combat (serveur autoritaire) : rendu + ancrage sol.
+    syncCombatants(
+      this.scene,
+      this.combatantViews,
+      snapshot,
+      (x, z) => this.collision.sampleGround(x, z),
+      this.camera
+    );
+    if (!paused && !this.hud.isMapView()) {
+      this.handleAttackInput(snapshot);
+    }
+
     if (this.hud.isMapView()) {
       this.updateMapDebugCamera(delta);
     } else {
@@ -189,6 +210,13 @@ export class GameApp {
     updateFournaiseFx(this.clock.elapsedTime);
     updateWestWaterFx(this.clock.elapsedTime);
     this.updateActiveBiome();
+    this.hud.setMapState({
+      x: this.cameraPivot.position.x,
+      z: this.cameraPivot.position.z,
+      yaw: this.cameraPivot.rotation.y,
+      zone: this.activeZoneLabel
+    });
+    updateWorldAtmosphere(this.scene, this.cameraPivot.position, delta);
     this.hud.update(snapshot);
     this.updateDebugOverlay(delta);
   }
@@ -259,13 +287,45 @@ export class GameApp {
       THREE.MathUtils.lerp(92, 255, this.hud.getCameraZoom()),
       aspect < 0.75 ? 260 : 0
     );
+    // Focus carte centre sur la zone active (Ouest ou Fournaise selon ?visualZone).
+    const zoneSpawn = getInitialSpawn();
     const target = new THREE.Vector3(
-      THREE.MathUtils.lerp(0, WEST_BLOCKOUT_SPAWN.x, mobileMapFocus),
+      THREE.MathUtils.lerp(0, zoneSpawn.x, mobileMapFocus),
       0,
-      THREE.MathUtils.lerp(0, WEST_BLOCKOUT_SPAWN.z, mobileMapFocus)
+      THREE.MathUtils.lerp(0, zoneSpawn.z, mobileMapFocus)
     );
     this.camera.position.lerp(new THREE.Vector3(target.x, height, target.z + 0.01), Math.min(1, delta * 5));
     this.camera.lookAt(target);
+  }
+
+  // Attaque : cible vivante la plus proche dans la portee serveur. Le serveur revalide.
+  private handleAttackInput(snapshot: NetworkSnapshot): void {
+    if (!this.input.consumeAttackPressed()) {
+      return;
+    }
+
+    // Premier geste = debloque l'audio (politique autoplay). Son de swing immediat.
+    resumeAudio();
+    sfx.attack();
+
+    const origin = this.cameraPivot.position;
+    let nearestId: string | null = null;
+    let nearestDistance: number = combatConfig.attackRange;
+
+    for (const target of snapshot.combatants) {
+      if (!target.alive) {
+        continue;
+      }
+      const distance = Math.hypot(origin.x - target.x, origin.z - target.z);
+      if (distance <= nearestDistance) {
+        nearestDistance = distance;
+        nearestId = target.id;
+      }
+    }
+
+    if (nearestId) {
+      this.network.sendAttack(nearestId);
+    }
   }
 
   private updateNpcInteractions(paused: boolean): void {
@@ -290,22 +350,50 @@ export class GameApp {
     const length = Math.hypot(movement.x, movement.z);
     const normalizedX = length > 0 ? movement.x / length : 0;
     const normalizedZ = length > 0 ? movement.z / length : 0;
+    const sin = Math.sin(this.cameraYaw);
+    const cos = Math.cos(this.cameraYaw);
+    const worldX = normalizedX * cos + normalizedZ * sin;
+    const worldZ = normalizedZ * cos - normalizedX * sin;
+    const previous = this.cameraPivot.position.clone();
+    const currentGround = this.collision.sampleGround(previous.x, previous.z);
 
+    if (previous.y <= currentGround + groundSnapTolerance && this.verticalVelocity <= 0) {
+      this.grounded = true;
+      this.verticalVelocity = 0;
+      previous.y = currentGround;
+    }
+
+    const jumpRequested = this.input.consumeJumpPressed();
+    if (this.grounded && jumpRequested) {
+      this.grounded = false;
+      this.verticalVelocity = jumpVelocity;
+    }
+
+    const proposed = previous.clone();
     if (length > 0) {
-      const sin = Math.sin(this.cameraYaw);
-      const cos = Math.cos(this.cameraYaw);
-      const worldX = normalizedX * cos + normalizedZ * sin;
-      const worldZ = normalizedZ * cos - normalizedX * sin;
-
-      const previous = this.cameraPivot.position.clone();
-      const proposed = previous.clone();
       proposed.x += worldX * playerMoveSpeed * delta;
       proposed.z += worldZ * playerMoveSpeed * delta;
-      this.cameraPivot.position.copy(this.collision.resolveMove(previous, proposed));
       this.cameraPivot.rotation.y = Math.atan2(worldX, worldZ);
-    } else {
-      this.collision.snapToGround(this.cameraPivot.position);
     }
+
+    if (!this.grounded) {
+      this.verticalVelocity -= gravity * delta;
+      proposed.y += this.verticalVelocity * delta;
+    }
+
+    const resolved = this.collision.resolveMove(previous, proposed, {
+      airborne: !this.grounded,
+      currentY: proposed.y
+    });
+    const resolvedGround = this.collision.sampleGround(resolved.x, resolved.z);
+    if (resolved.y <= resolvedGround + groundSnapTolerance && this.verticalVelocity <= 0) {
+      resolved.y = resolvedGround;
+      this.verticalVelocity = 0;
+      this.grounded = true;
+    } else {
+      this.grounded = false;
+    }
+    this.cameraPivot.position.copy(resolved);
 
     this.network.sendMove({
       sequence: this.sequence,
@@ -337,16 +425,26 @@ export class GameApp {
       view.nameTag.remove();
     }
     this.remotePlayers.clear();
+    disposeCombatants(this.scene, this.combatantViews);
     this.renderer.dispose();
     this.network.disconnect();
   }
 }
 
-function getInitialWestSpawn(): { x: number; y: number; z: number; yaw: number } {
-  if (new URLSearchParams(window.location.search).get("spawn") === "maido") {
-    const maido = WEST_BLOCKOUT_PATH[WEST_BLOCKOUT_PATH.length - 1];
-    if (maido) {
-      return { x: maido.x, y: 1.2, z: maido.z, yaw: -1.15 };
+// Spawn initial. Zone de depart par defaut = Ouest (Saint-Paul / Saint-Gilles).
+// Choix Shan 2026-06-27 (aligne avec spawn-zone-sync de Codex). Serveur startZone aligne Ouest.
+// ?visualZone=fournaise  -> FOURNAISE_SPAWN (volcan : zone des cibles combat)
+// ?spawn=maido           -> fin du sentier Ouest (debug)
+// defaut                 -> WEST_BLOCKOUT_SPAWN
+function getInitialSpawn(): { x: number; y: number; z: number; yaw: number } {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("visualZone") === "fournaise") {
+    return FOURNAISE_SPAWN;
+  }
+  if (params.get("spawn") === "maido") {
+    const approach = WEST_BLOCKOUT_PATH[WEST_BLOCKOUT_PATH.length - 3];
+    if (approach) {
+      return { x: approach.x - 1.2, y: 1.2, z: approach.z - 1.5, yaw: -0.55 };
     }
   }
   return WEST_BLOCKOUT_SPAWN;

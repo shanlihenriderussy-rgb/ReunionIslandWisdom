@@ -2,9 +2,13 @@
 
 ## Intention
 
-`Reunion Island Wisdom` n'est pas un MMO de combat.
+`Reunion Island Wisdom` n'est pas centre sur le combat.
 
-C'est un jeu social d'exploration locale :
+> MAJ 2026-06-27 (ADR-015) : un combat PvE LEGER est ajoute sur decision de Shan. Il reste secondaire :
+> l'exploration, l'entraide et la culture locale demeurent les piliers. Voir section « Combat » plus bas.
+> Toujours PAS de PvP.
+
+C'est avant tout un jeu social d'exploration locale :
 
 - decouvrir La Reunion par zones ;
 - aider des PNJ ;
@@ -49,14 +53,53 @@ V2 :
 - jouer du kayamb ;
 - preparer un sac.
 
+Ajoute 2026-06-27 (ADR-015) :
+
+- attaquer une cible PvE (combat leger).
+
+Ajoute 2026-06-27 :
+
+- sauter avec `Espace` ;
+- collisionner avec les reliefs hauts au lieu de traverser les pentes/plateaux.
+
 Pas en V1 :
 
-- combat ;
 - PvP ;
 - trading ;
 - economie ;
 - housing ;
 - craft complexe.
+
+## Deplacement et collisions
+
+Runtime actuel : `apps/game-client/src/game/GameApp.ts`, `InputController.ts`, `collision.ts`.
+
+Logique V1 :
+
+- le serveur recoit toujours une intention 2D (`x`, `z`, `cameraYaw`) ;
+- le client predit la position locale pour garder une sensation immediate ;
+- la hauteur `y` vient du heightfield terrain RGE ALTI quand le chunk est charge ;
+- fallback : collision globale `reliefCollision`, puis hauteur `0` si asset absent ;
+- `Espace` declenche un saut uniquement si le joueur est au sol ;
+- gravite locale : la vitesse verticale descend jusqu'a retomber sur le sol sonde ;
+- le joueur est recale au sol seulement quand il touche le heightfield en descente ;
+- pendant un saut, le `y` n'est plus ecrase a chaque frame.
+
+Resolution collision :
+
+1. on propose une nouvelle position horizontale depuis l'input ;
+2. on verifie si le point reste dans la zone jouable ;
+3. on sonde la hauteur du sol a l'ancienne position et a la position cible ;
+4. si la marche montante est trop haute, le deplacement est refuse ;
+5. si la chute descendante est trop profonde, le deplacement est refuse ;
+6. si le joueur est en l'air, un relief plus haut devient solide tant que le joueur n'a pas assez de hauteur pour le franchir ;
+7. on tente un fallback axe X seul puis axe Z seul pour glisser contre les bords ;
+8. les colliders ronds des props/blockout repoussent ensuite le joueur ;
+9. si le push prop remet le joueur hors terrain valide, retour a la position precedente.
+
+Limite connue :
+
+- le saut est local client ; pour synchroniser les autres joueurs en vertical, ajouter `y`, `vy` ou un evenement `jump` au protocole serveur.
 
 ## Boucle minute
 
@@ -155,6 +198,56 @@ Types :
 | Observation | fumee Fournaise | atteindre point de vue |
 | Social | kabar | emote / regroupement |
 | Meteo | cyclone | se mettre a l'abri / signaler |
+
+## Combat (PvE leger, ADR-015)
+
+Ajoute le 2026-06-27. Reste secondaire vs exploration. Pas de PvP.
+
+Principe :
+
+- cibles = entites PvE stationnaires, placees par zone (`packages/content/data/combat-targets.json`) ;
+- le joueur envoie une intention d'attaque ciblee ; le serveur tranche tout ;
+- **aggro sur coup** : une cible ne riposte QUE sur un joueur qui l'a frappee recemment (fenetre d'aggro), et seulement tant qu'il reste a portee. Pas de degats par simple proximite ;
+- mort joueur -> respawn au spawn de zone apres delai ; mort cible -> respawn apres delai.
+
+Reglage (`combatConfig` dans `@riw/shared`) :
+
+| Cle | Valeur | Role |
+| --- | --- | --- |
+| `playerMaxHealth` | 100 | PV joueur |
+| `attackRange` | 4 | portee attaque joueur (serveur) |
+| `attackCooldownMs` | 650 | cadence attaque joueur (anti-spam) |
+| `attackDamage` | 18 | degats par coup joueur |
+| `targetAggroRange` | 5 | portee (leash) de riposte d'une cible aggro |
+| `targetAggroDurationMs` | 5000 | duree d'aggro apres un coup (sinon cible passive) |
+| `playerRespawnMs` | 4000 | delai respawn joueur |
+
+Data cible (par entree) : `maxHealth`, `contactDamage`, `attackCooldownMs`, `respawnMs`.
+
+Placement actuel (`combat-targets.json`) :
+
+- Ouest (depart par defaut, ADR-016) : 3 cibles intro sur le sentier blockout, difficulte croissante (`galet-roulant`, `remous-ravine`, `embacle-ravine`).
+- Fournaise (`?visualZone=fournaise`) : 3 aleas du volcan (`braise-errante`, `gardien-scorie`, `souffle-enclos`).
+
+Serveur authoritative (anti-triche) :
+
+- portee, cooldown, degats, mort, respawn decides serveur ;
+- intention validee Zod (`attackIntentSchema`) ; le client n'envoie qu'un `targetId` ;
+- joueur mort gele (pas de deplacement) jusqu'au respawn.
+
+Etat (2026-06-27) :
+
+- rendu client des cibles (procedural basalte) : FAIT ;
+- barre de vie joueur (HUD, composant design `.riw-gauge`) : FAIT ;
+- input attaque (touche F + bouton tactile) : FAIT ;
+- feedback de coup (flash cible, anim de mort, flash joueur) + SFX procedural Web Audio : FAIT ;
+- recompense a la destruction : souvenir annonce (notif HUD), envoye serveur-authoritative. NB : pas encore stocke (inventaire serveur = backlog).
+
+Reste :
+
+- equilibrage au ressenti (knobs `combatConfig` + data par cible) ;
+- stockage reel des souvenirs quand l'inventaire serveur existe ;
+- validation visuelle `?mapDebug` du placement des cibles.
 
 ## Events serveur
 

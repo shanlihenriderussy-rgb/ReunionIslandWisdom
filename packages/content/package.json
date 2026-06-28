@@ -8,9 +8,9 @@
   },
   "scripts": {
     "validate:content": "tsx scripts/validate-content.ts",
-    "build": "pnpm validate:content && tsc -p tsconfig.json",
+    "build": "tsx scripts/validate-content.ts && tsc -p tsconfig.json",
     "lint": "eslint src",
-    "typecheck": "pnpm validate:content && tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsx scripts/validate-content.ts && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@riw/shared": "workspace:*",

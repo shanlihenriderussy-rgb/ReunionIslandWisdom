@@ -74,6 +74,15 @@ adventure mood. Deep greens, slate rock, soft mist. STYLE: stylized low-poly 3D,
 soft toon light, mobile-friendly, no photorealism, no text, no watermark. 16:9 sheet, 6 thumbnails.
 ```
 
+Complement terrain reel 2026-06-27 — hauts du Maido / Mafate :
+
+```txt
+Add a colder highland Maido/Mafate variant: heavy low clouds, mist rolling over ridges,
+dark silhouettes of tamarind-like and cryptomeria-like trees, wind-bent shrubs, dry brown
+grass, grey-green terrain, open moorland patches, distant ridges fading into blue-grey fog.
+Keep it stylized low-poly and readable, not photorealistic. No imported photo texture.
+```
+
 ### B4. Cirque de Salazie — eau & cascades
 
 ```txt

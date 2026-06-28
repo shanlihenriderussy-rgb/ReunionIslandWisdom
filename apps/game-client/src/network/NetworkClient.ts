@@ -2,9 +2,12 @@ import { Client, type Room, type RoomAvailable, type SeatReservation } from "col
 import {
   dialogueOpenedSchema,
   serverSnapshotSchema,
+  targetDefeatedSchema,
   worldRoomName,
+  type CombatantSnapshotDto,
   type DialogueOpened,
-  type MoveIntent
+  type MoveIntent,
+  type TargetDefeated
 } from "@riw/shared";
 
 type PlayerSnapshot = {
@@ -22,13 +25,25 @@ type ChatSnapshot = {
   text: string;
 };
 
+// Etat combat du joueur local (HP + vivant), extrait du snapshot serveur.
+type SelfCombatState = {
+  health: number;
+  maxHealth: number;
+  alive: boolean;
+};
+
 export type NetworkSnapshot = {
   connected: boolean;
   sessionId: string | null;
   players: PlayerSnapshot[];
+  combatants: CombatantSnapshotDto[];
+  self: SelfCombatState | null;
   chat: ChatSnapshot[];
   activeEvent: string;
   dialogue: DialogueOpened | null;
+  // Derniere cible vaincue par CE joueur + compteur (notification one-shot cote HUD).
+  lastDefeated: TargetDefeated | null;
+  defeatSeq: number;
 };
 
 export class NetworkClient {
@@ -39,9 +54,13 @@ export class NetworkClient {
     connected: false,
     sessionId: null,
     players: [],
+    combatants: [],
+    self: null,
     chat: [],
     activeEvent: "connexion",
-    dialogue: null
+    dialogue: null,
+    lastDefeated: null,
+    defeatSeq: 0
   };
 
   async connect(): Promise<void> {
@@ -56,9 +75,12 @@ export class NetworkClient {
           return;
         }
 
+        const sessionId = this.room?.sessionId ?? null;
+        const selfPlayer = sessionId ? result.data.players.find((player) => player.id === sessionId) : undefined;
+
         this.snapshot = {
           connected: true,
-          sessionId: this.room?.sessionId ?? null,
+          sessionId,
           players: result.data.players.map((player) => ({
             id: player.id,
             name: player.name,
@@ -67,13 +89,32 @@ export class NetworkClient {
             z: player.z,
             yaw: player.yaw
           })),
+          combatants: result.data.combatants,
+          self: selfPlayer
+            ? { health: selfPlayer.health, maxHealth: selfPlayer.maxHealth, alive: selfPlayer.alive }
+            : null,
           chat: result.data.chat.map((entry) => ({
             id: entry.id,
             playerName: entry.playerName,
             text: entry.text
           })),
           activeEvent: result.data.activeEvent,
-          dialogue: this.snapshot.dialogue
+          dialogue: this.snapshot.dialogue,
+          lastDefeated: this.snapshot.lastDefeated,
+          defeatSeq: this.snapshot.defeatSeq
+        };
+      });
+
+      this.room.onMessage("targetDefeated", (message: unknown) => {
+        const result = targetDefeatedSchema.safeParse(message);
+        if (!result.success) {
+          return;
+        }
+
+        this.snapshot = {
+          ...this.snapshot,
+          lastDefeated: result.data,
+          defeatSeq: this.snapshot.defeatSeq + 1
         };
       });
 
@@ -115,6 +156,14 @@ export class NetworkClient {
     }
 
     this.room.send("interact", { targetId });
+  }
+
+  sendAttack(targetId: string): void {
+    if (!this.room) {
+      return;
+    }
+
+    this.room.send("attack", { targetId });
   }
 
   openLocalDialogue(dialogue: DialogueOpened): void {

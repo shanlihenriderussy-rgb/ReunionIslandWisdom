@@ -154,13 +154,9 @@
      3. SURFACES HUD
      Panneaux sombres (verre basalte) + cartouches bois.
      ---------------------------------------------------------- */
-  --hud-panel:        rgb(24 22 20 / 90%);   /* basalte plein — lisibilité plein soleil */
+  --hud-panel:        rgb(26 25 23 / 82%);   /* verre basalte */
   --hud-panel-solid:  #1C1917;
-  --hud-panel-raise:  rgb(50 45 41 / 90%);   /* surface surélevée */
-  /* Trame sérigraphie / tapa — texture artisanale tropicale sur panneaux basalte */
-  --hud-weave:
-    repeating-linear-gradient(45deg, rgb(247 243 232 / 8%) 0 1px, transparent 1px 5px),
-    repeating-linear-gradient(-45deg, rgb(20 17 15 / 22%) 0 1px, transparent 1px 5px);
+  --hud-panel-raise:  rgb(50 45 41 / 86%);   /* surface surélevée */
   --hud-ink:          #F7F3E8;               /* texte clair principal */
   --hud-ink-soft:     rgb(247 243 232 / 72%);
   --hud-ink-faint:    rgb(247 243 232 / 45%);
@@ -175,6 +171,13 @@
   --contour:          #14110F;               /* contour quasi-noir */
   --contour-soft:     rgb(20 17 15 / 55%);
   --hud-hairline:     rgb(247 243 232 / 16%);
+
+  /* Voile d'ambiance posé sur les scènes 3D (piloté par le thème) */
+  --scene-veil:       linear-gradient(0deg, transparent, transparent);
+  --board-bg:
+      radial-gradient(1200px 700px at 80% -5%, rgb(27 143 168 / 24%), transparent 60%),
+      radial-gradient(900px 600px at 0% 100%, rgb(74 124 63 / 22%), transparent 55%),
+      linear-gradient(180deg, #15120d, #1d1812 60%, #15120d);
 
   /* ----------------------------------------------------------
      4. TYPOGRAPHIE
@@ -223,18 +226,15 @@
   --touch-min:    44px;   /* cible tactile minimale */
 
   /* ----------------------------------------------------------
-     6. RAYONS — coins nets / carrés (« bois gravé tropical »)
-     Direction : zéro à 5 px max. Pas de pilule, pas de rond.
-     Lecture tampon/tiki/affiche sérigraphiée, moins « app moderne ».
+     6. RAYONS — sobres, plafonnés 5→8px (--r-disc reste un vrai cercle)
      ---------------------------------------------------------- */
-  --r-sm:   0;      /* puces, slots : coin franc */
-  --r-md:   3px;
-  --r-lg:   5px;
-  --r-xl:   5px;
-  --r-2xl:  5px;
-  --r-pill: 5px;    /* ex-pilule → rectangle à coin doux */
-  --r-disc: 5px;    /* ex-rond → carré à coin doux */
-  --r-dot:  2px;    /* points / indicateurs : mini carré */
+  --r-sm:   5px;
+  --r-md:   6px;
+  --r-lg:   7px;
+  --r-xl:   8px;
+  --r-2xl:  8px;
+  --r-pill: 8px;
+  --r-disc: 50%;
 
   /* ----------------------------------------------------------
      7. CONTOURS — épaisseur (intensité cartoon ~80%)
@@ -291,4 +291,87 @@
 
 @media (prefers-reduced-motion: reduce) {
   :root { --dur-press: 0ms; --dur-fast: 0ms; --dur-base: 0ms; }
+}
+
+/* ============================================================
+   10. THÈMES & CONTEXTES D'ACCESSIBILITÉ
+   Pilotés par attributs sur <html> (cumulables) :
+     data-theme="night"      → ambiance Nuit tropicale / Volcan
+     data-contrast="high"    → contraste renforcé (WCAG AAA, anti-soleil)
+     data-text="large"       → texte agrandi (+~20 %)
+     data-motion="off"       → mouvement réduit forcé
+   ============================================================ */
+
+/* ---------- MODE NUIT (« Nuit tropicale / Volcan ») ---------- */
+[data-theme="night"] {
+  /* surfaces HUD : verre nocturne bleu-violet */
+  --hud-panel:        rgb(18 16 32 / 86%);
+  --hud-panel-solid:  #12101e;
+  --hud-panel-raise:  rgb(40 34 60 / 90%);
+  --hud-ink:          #ECF1FF;
+  --hud-ink-soft:     rgb(236 241 255 / 74%);
+  --hud-ink-faint:    rgb(236 241 255 / 46%);
+  --hud-gold-ink:     #FFD37A;
+  --hud-hairline:     rgb(236 241 255 / 16%);
+  --contour:          #07060d;
+
+  /* accent CTA vire vers la lave incandescente */
+  --color-cta:        #FF9E45;
+  --color-cta-hover:  #FFB76B;
+  --color-cta-active: #EA8420;
+  --color-cta-edge:   #8A4A0A;
+
+  /* secondaire : turquoise lumineux dans le noir */
+  --color-secondary:        var(--lagoon-300);
+  --color-secondary-hover:  var(--lagoon-200);
+  --color-secondary-active:  var(--lagoon-400);
+
+  /* jauges : lave / cyan glacé */
+  --color-health:      #FF6B4A;
+  --color-health-edge: #8A2613;
+  --color-energy:      #57D4E6;
+  --color-energy-edge: #146577;
+
+  /* cartouche bois → bois flotté sombre, encre claire */
+  --wood-light:    #5C3D24;
+  --wood-100:      #482D17;
+  --wood-edge:     #241308;
+  --wood-ink:      #F6E6CC;
+  --wood-ink-soft: rgb(246 230 204 / 80%);
+
+  /* voile nocturne sur les scènes (crépuscule volcanique) */
+  --scene-veil: linear-gradient(180deg, rgb(22 14 48 / 46%), rgb(28 10 8 / 60%));
+  --board-bg:
+      radial-gradient(1100px 680px at 82% -8%, rgb(120 60 200 / 26%), transparent 60%),
+      radial-gradient(900px 620px at 0% 100%, rgb(255 110 50 / 20%), transparent 55%),
+      linear-gradient(180deg, #0b0a16, #120d18 55%, #0a0710);
+
+  --sh-float: 0 14px 34px rgb(0 0 0 / 55%);
+}
+
+/* ---------- CONTRASTE ÉLEVÉ (lisibilité plein soleil / WCAG AAA) ---------- */
+[data-contrast="high"] {
+  --hud-panel:        var(--hud-panel-solid);
+  --hud-panel-raise:  #322d29;
+  --hud-ink:          #FFFFFF;
+  --hud-ink-soft:     #FFFFFF;
+  --hud-ink-faint:    rgb(255 255 255 / 78%);
+  --hud-hairline:     rgb(255 255 255 / 60%);
+  --hud-gold-ink:     #FFE9B0;
+  --contour:          #000000;
+  --wood-ink:         #2A1408;
+  --wood-ink-soft:    #2A1408;
+}
+
+/* ---------- GRAND TEXTE (+~20 %) ---------- */
+[data-text="large"] {
+  --t-11: 13px;  --t-12: 14px;  --t-13: 15px;  --t-14: 16px;  --t-15: 17px;
+  --t-16: 19px;  --t-18: 21px;  --t-21: 25px;  --t-26: 31px;  --t-32: 38px;
+  --t-42: 50px;  --t-56: 66px;
+  --w-body: 700;
+}
+
+/* ---------- MOUVEMENT RÉDUIT (forcé) ---------- */
+[data-motion="off"] {
+  --dur-press: 0ms; --dur-fast: 0ms; --dur-base: 0ms;
 }

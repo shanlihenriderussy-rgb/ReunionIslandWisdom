@@ -1,5 +1,9 @@
 import type { NetworkClient, NetworkSnapshot } from "../network/NetworkClient";
 import type { InputController } from "../game/InputController";
+import { worldBounds } from "@riw/shared";
+import { sfx } from "../audio/sfx";
+import { WEST_BLOCKOUT_PATH, WEST_BLOCKOUT_QUEST_MARKERS } from "../world/westBlockout";
+import { WORLD_BIOMES } from "../world/biomes";
 
 export type HudDebugInfo = {
   fps: number;
@@ -7,16 +11,25 @@ export type HudDebugInfo = {
   zone: string;
 };
 
+export type HudMapState = {
+  x: number;
+  z: number;
+  yaw: number;
+  zone: string;
+};
+
 export type HudController = {
   element: HTMLDivElement;
   setInteractPrompt: (label: string | null) => void;
   setZone: (label: string) => void;
+  setMapState: (state: HudMapState) => void;
   setDebug: (info: HudDebugInfo | null) => void;
   update: (snapshot: NetworkSnapshot) => void;
   isPaused: () => boolean;
   isMapView: () => boolean;
   getCameraZoom: () => number;
   setObjectiveStage: (stage: 1 | 2 | 3) => void;
+  setHealth: (state: NetworkSnapshot["self"]) => void;
   dispose: () => void;
 };
 
@@ -25,7 +38,10 @@ const OFFLINE_AFTER_MS = 4000;
 const START_OBJECTIVE_NPC_NAME = "Tatie Snack";
 const ROUTE_OBJECTIVE_NPC_NAME = "Chauffeur Car Jaune";
 const EXIT_OBJECTIVE_NPC_NAME = "Guide Maido";
-const START_QUEST_TITLE = "Éveil de la Fournaise";
+const START_QUEST_TITLE = "Traversée Ouest vers Maïdo";
+const MINIMAP_BASE_RANGE = 44;
+const MINIMAP_MIN_RANGE = 22;
+const MINIMAP_MAX_RANGE = 120;
 
 type InvItem = {
   name: string;
@@ -154,7 +170,7 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
 
   menuButtons.forEach((btn) => {
     const btnEl = document.createElement("div");
-    btnEl.className = "hud-menu-btn-round";
+    btnEl.className = "riw-iconbtn hud-menu-btn-round";
     btnEl.setAttribute("title", btn.label);
     btnEl.innerHTML = getSvg(btn.icon);
     topCenterBar.appendChild(btnEl);
@@ -169,17 +185,28 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
   minimapCard.className = "hud-minimap-card";
 
   const minimapCircle = document.createElement("div");
-  minimapCircle.className = "hud-minimap-circle";
+  minimapCircle.className = "riw-minimap hud-minimap-circle";
+  minimapCircle.setAttribute("role", "button");
+  minimapCircle.setAttribute("tabindex", "0");
+  minimapCircle.setAttribute("aria-label", "Mini-carte interactive. Cliquer pour basculer la vue carte.");
 
-  const minimapIsland = document.createElement("div");
-  minimapIsland.className = "hud-minimap-island";
+  const minimapCanvas = document.createElement("canvas");
+  minimapCanvas.className = "hud-minimap-canvas";
+  minimapCanvas.width = 232;
+  minimapCanvas.height = 232;
+
   const minimapCompass = document.createElement("div");
   minimapCompass.className = "hud-minimap-compass";
   minimapCompass.textContent = "N";
-  minimapCircle.append(minimapIsland, minimapCompass);
+
+  const minimapHint = document.createElement("div");
+  minimapHint.className = "hud-minimap-hint";
+  minimapHint.textContent = "M";
+  minimapCircle.append(minimapCanvas, minimapCompass, minimapHint);
 
   const statusCard = document.createElement("div");
-  statusCard.className = "hud-status-card";
+  statusCard.className = "riw-status hud-status-card";
+  statusCard.dataset.state = "online";
 
   const statusZone = document.createElement("div");
   statusZone.className = "hud-status-zone";
@@ -189,12 +216,16 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
   statusPlayers.className = "hud-status-players";
 
   const statusDot = document.createElement("span");
-  statusDot.className = "hud-status-dot online";
+  statusDot.className = "riw-status__dot hud-status-dot online";
   const statusLabel = document.createElement("span");
   statusLabel.textContent = "En ligne : 1";
 
   statusPlayers.append(statusDot, statusLabel);
-  statusCard.append(statusZone, statusPlayers);
+  const statusMeta = document.createElement("div");
+  statusMeta.className = "hud-status-meta";
+  statusMeta.textContent = "Mini-carte prête";
+
+  statusCard.append(statusZone, statusPlayers, statusMeta);
   minimapCard.append(minimapCircle, statusCard);
   topRightPanel.appendChild(minimapCard);
 
@@ -385,18 +416,6 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
   questBody.style.display = "flex";
   questBody.style.flexDirection = "column";
   questBody.style.gap = "8px";
-  questBody.innerHTML = `
-    <div style="font-weight:bold; color:var(--hud-gold-ink);">${START_QUEST_TITLE}</div>
-    <div style="color:var(--hud-ink-soft);">◆ Départ : snack de Saint-Paul / Saint-Gilles</div>
-    <div style="color:var(--hud-ink-soft);">◆ Parcours : lagon → Car Jaune → ravine → point de vue Maïdo / Mafate</div>
-    <div style="margin-top:8px; border-top:1px solid var(--hud-hairline); padding-top:8px;">
-      <div style="font-weight:bold; color:var(--hud-gold-ink); font-size:11px; text-transform:uppercase;">Récompenses</div>
-      <div style="display:flex; gap:12px; margin-top:4px; font-size:12px;">
-        <span><b>XP</b> 150</span>
-        <span><b>Item</b> Pierre de lave</span>
-      </div>
-    </div>
-  `;
   questPanel.append(questTitle, questBody);
 
   // Panel 5: Right Column (Notifications + Info Window)
@@ -610,6 +629,115 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
   actionButton.addEventListener("pointerup", () => actionButton.classList.remove("is-active"));
   actionButton.addEventListener("pointercancel", () => actionButton.classList.remove("is-active"));
 
+  // Bouton attaque mobile (equivalent touche F). Ajoute aux controles tactiles.
+  const attackButton = document.createElement("button");
+  attackButton.type = "button";
+  attackButton.className = "hud-action-btn hud-action-btn--attack";
+  attackButton.innerHTML = `<span class="hud-action-btn__key">F</span>`;
+  attackButton.setAttribute("aria-label", "Attaquer");
+  touchControls.appendChild(attackButton);
+  attackButton.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    input.pressAttack();
+    attackButton.classList.add("is-active");
+  });
+  attackButton.addEventListener("pointerup", () => attackButton.classList.remove("is-active"));
+  attackButton.addEventListener("pointercancel", () => attackButton.classList.remove("is-active"));
+
+  // --- Barre de vie combat (REELLE, valeurs serveur) ---
+  // Alignee sur le design system : composant `.riw-gauge` (token `--color-health`), voir 23-design-system-hud.
+  // Le combat est le gameplay qui active enfin la jauge vie. Affichee seulement si snapshot.self present.
+  // Seul le positionnement + la legende transitoire restent inline (pas de patch styles.css partage).
+  const combatBar = document.createElement("div");
+  combatBar.className = "hud-combat-bar";
+  combatBar.style.position = "absolute";
+  combatBar.style.bottom = "118px";
+  combatBar.style.left = "50%";
+  combatBar.style.transform = "translateX(-50%)";
+  combatBar.style.width = "260px";
+  combatBar.style.maxWidth = "60vw";
+  combatBar.style.pointerEvents = "none";
+  combatBar.style.display = "none";
+
+  const combatGauge = document.createElement("div");
+  combatGauge.className = "riw-gauge"; // variante sante par defaut (--color-health)
+
+  const combatIcon = document.createElement("div");
+  combatIcon.className = "riw-gauge__icon";
+  combatIcon.innerHTML = getSvg("heart");
+
+  const combatTrack = document.createElement("div");
+  combatTrack.className = "riw-gauge__track";
+  const combatFill = document.createElement("div");
+  combatFill.className = "riw-gauge__fill";
+  combatTrack.appendChild(combatFill);
+
+  const combatNum = document.createElement("div");
+  combatNum.className = "riw-gauge__num";
+  combatNum.textContent = "100";
+
+  combatGauge.append(combatIcon, combatTrack, combatNum);
+
+  const combatStatus = document.createElement("div");
+  combatStatus.textContent = "Vaincu — réapparition...";
+  combatStatus.style.marginTop = "4px";
+  combatStatus.style.textAlign = "center";
+  combatStatus.style.font = "600 11px/1.2 var(--font-display, system-ui), sans-serif";
+  combatStatus.style.color = "var(--hud-ink, #fff)";
+  combatStatus.style.textShadow = "0 1px 2px rgb(0 0 0 / 70%)";
+  combatStatus.hidden = true;
+
+  combatBar.append(combatGauge, combatStatus);
+  element.appendChild(combatBar);
+
+  // Overlay flash plein ecran (vignette rouge) quand le joueur prend des degats.
+  const combatFlash = document.createElement("div");
+  combatFlash.style.position = "absolute";
+  combatFlash.style.inset = "0";
+  combatFlash.style.pointerEvents = "none";
+  combatFlash.style.opacity = "0";
+  combatFlash.style.transition = "opacity 0.35s ease-out";
+  combatFlash.style.background = "radial-gradient(ellipse at center, transparent 45%, rgb(180 30 20 / 65%) 100%)";
+  element.appendChild(combatFlash);
+
+  let lastSelfHealth: number | null = null;
+  let lastSelfAlive = true;
+  let lastDefeatSeq = 0;
+  function flashHurt(intensity: number): void {
+    combatFlash.style.opacity = String(intensity);
+    window.setTimeout(() => {
+      combatFlash.style.opacity = "0";
+    }, 30);
+  }
+
+  function updateHealth(state: NetworkSnapshot["self"]): void {
+    if (!state) {
+      combatBar.style.display = "none";
+      lastSelfHealth = null;
+      return;
+    }
+    combatBar.style.display = "block";
+    const ratio = state.maxHealth > 0 ? Math.max(0, Math.min(1, state.health / state.maxHealth)) : 0;
+    // Le fill `.riw-gauge__fill` se pilote par scaleX (transform-origin gauche).
+    combatFill.style.transform = `scaleX(${ratio})`;
+    combatNum.textContent = `${Math.round(state.health)}`;
+    combatStatus.hidden = state.alive;
+    combatGauge.style.opacity = state.alive ? "1" : "0.55";
+
+    // Feedback joueur (flash + son) sur transition de PV.
+    if (lastSelfHealth !== null) {
+      if (!state.alive && lastSelfAlive) {
+        flashHurt(0.85);
+        sfx.playerDown();
+      } else if (state.alive && state.health < lastSelfHealth) {
+        flashHurt(0.5);
+        sfx.playerHurt();
+      }
+    }
+    lastSelfHealth = state.health;
+    lastSelfAlive = state.alive;
+  }
+
   // --- Menu pause (overlay) ---
   const pausePanel = document.createElement("div");
   pausePanel.className = "pause-panel riw-pause";
@@ -631,9 +759,11 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
   pauseControls.innerHTML = `
     <span><b>ZQSD / WASD</b> Se déplacer</span>
     <span><b>Souris</b> Tourner la caméra</span>
+    <span><b>Espace</b> Sauter</span>
+    <span><b>F</b> Attaquer la cible proche</span>
     <span><b>I</b> Sac à dos</span>
     <span><b>J</b> Journal de quêtes</span>
-    <span><b>M</b> Carte</span>
+    <span><b>M / mini-carte</b> Vue carte</span>
     <span><b>Entrée</b> Discuter</span>
     <span><b>Échap</b> Fermer / Pause</span>
   `;
@@ -672,7 +802,6 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
   const showMockHud = new URLSearchParams(window.location.search).has("hudMock");
   if (!showMockHud) {
     playerCard.hidden = true; // jauges HP/Mana + badge niveau 25 (mock)
-    minimapCircle.hidden = true; // minimap SVG statique trompeuse (statusCard conserve)
     hotbarWrapper.hidden = true; // 10 slots + barre XP (mock)
     infoPanel.hidden = true; // details objet d'inventaire (mock)
     createdMenuButtons[0]?.style.setProperty("display", "none"); // bouton Sac (inventaire mock)
@@ -685,6 +814,10 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
   let firstUpdateAt = 0;
   let lastChatCount = -1;
   let objectiveStage: 0 | 1 | 2 | 3 = 0;
+  let mapState: HudMapState = { x: -78.5, z: 7.5, yaw: 0, zone: "Saint-Paul / Saint-Gilles" };
+  let lastSnapshot: NetworkSnapshot | null = null;
+  let minimapRange = MINIMAP_BASE_RANGE;
+  let lastQuestSignature = "";
 
   // Render initial panels
   renderInventory();
@@ -693,9 +826,231 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
   // Show default notifications
   const welcomeControls = showMockHud
     ? "Touche I : sac · J : quêtes · M : carte."
-    : "Touche J : quêtes · M : carte.";
+    : "Touche J : quêtes · M : carte · molette sur mini-carte : portée.";
   setTimeout(() => addNotification(`Bienvenue à La Réunion ! ${welcomeControls}`), 500);
   setTimeout(() => addNotification(`Nouvelle quête : ${START_QUEST_TITLE}.`), 2500);
+
+  const minimapCtx = minimapCanvas.getContext("2d");
+
+  function drawMiniMap(snapshot: NetworkSnapshot | null): void {
+    if (!minimapCtx) {
+      return;
+    }
+    const canvasSize = minimapCanvas.width;
+    const center = canvasSize / 2;
+    const radius = center - 8;
+    const scale = radius / minimapRange;
+    const ctx = minimapCtx;
+
+    ctx.clearRect(0, 0, canvasSize, canvasSize);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    const gradient = ctx.createRadialGradient(center * 0.6, center * 0.45, 8, center, center, radius);
+    gradient.addColorStop(0, "#76d6cc");
+    gradient.addColorStop(0.45, "#5ba96a");
+    gradient.addColorStop(1, "#33483b");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvasSize, canvasSize);
+
+    drawMiniMapGrid(ctx, center, radius);
+    drawWorldBounds(ctx, worldToMini);
+    drawBiomes(ctx, worldToMini, scale);
+    drawWestPath(ctx, worldToMini);
+    drawQuestMarkers(ctx, worldToMini);
+    drawCombatants(ctx, worldToMini, snapshot);
+    drawPlayers(ctx, worldToMini, snapshot);
+    drawPlayerArrow(ctx, center, mapState.yaw);
+
+    ctx.restore();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#14110f";
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "rgba(255,255,255,0.28)";
+    ctx.beginPath();
+    ctx.arc(center, center, radius - 4, 0, Math.PI * 2);
+    ctx.stroke();
+
+    statusMeta.textContent = `${Math.round(mapState.x)}, ${Math.round(mapState.z)} · portée ${Math.round(minimapRange)}m`;
+
+    function worldToMini(x: number, z: number): { x: number; y: number; visible: boolean } {
+      const px = center + (x - mapState.x) * scale;
+      const py = center + (z - mapState.z) * scale;
+      const visible = Math.hypot(px - center, py - center) <= radius + 8;
+      return { x: px, y: py, visible };
+    }
+  }
+
+  function drawMiniMapGrid(ctx: CanvasRenderingContext2D, center: number, radius: number): void {
+    ctx.strokeStyle = "rgba(20,17,15,0.18)";
+    ctx.lineWidth = 1;
+    for (const r of [radius * 0.32, radius * 0.62, radius * 0.9]) {
+      ctx.beginPath();
+      ctx.arc(center, center, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(center, center - radius);
+    ctx.lineTo(center, center + radius);
+    ctx.moveTo(center - radius, center);
+    ctx.lineTo(center + radius, center);
+    ctx.stroke();
+  }
+
+  function drawWorldBounds(
+    ctx: CanvasRenderingContext2D,
+    project: (x: number, z: number) => { x: number; y: number; visible: boolean }
+  ): void {
+    const corners = [
+      project(worldBounds.minX, worldBounds.minZ),
+      project(worldBounds.maxX, worldBounds.minZ),
+      project(worldBounds.maxX, worldBounds.maxZ),
+      project(worldBounds.minX, worldBounds.maxZ)
+    ];
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    corners.forEach((point, index) => {
+      if (index === 0) {
+        ctx.moveTo(point.x, point.y);
+      } else {
+        ctx.lineTo(point.x, point.y);
+      }
+    });
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  function drawBiomes(
+    ctx: CanvasRenderingContext2D,
+    project: (x: number, z: number) => { x: number; y: number; visible: boolean },
+    scale: number
+  ): void {
+    for (const biome of WORLD_BIOMES) {
+      const point = project(biome.center.x, biome.center.y);
+      if (!point.visible) {
+        continue;
+      }
+      ctx.fillStyle = `#${biome.debugColor.toString(16).padStart(6, "0")}22`;
+      ctx.strokeStyle = `#${biome.debugColor.toString(16).padStart(6, "0")}88`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, Math.max(5, biome.radius * scale), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  function drawWestPath(
+    ctx: CanvasRenderingContext2D,
+    project: (x: number, z: number) => { x: number; y: number; visible: boolean }
+  ): void {
+    ctx.strokeStyle = "#f2d08b";
+    ctx.lineWidth = 4;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    WEST_BLOCKOUT_PATH.forEach((point, index) => {
+      const projected = project(point.x, point.z);
+      if (index === 0) {
+        ctx.moveTo(projected.x, projected.y);
+      } else {
+        ctx.lineTo(projected.x, projected.y);
+      }
+    });
+    ctx.stroke();
+
+    ctx.strokeStyle = "rgba(20,17,15,0.32)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  function drawQuestMarkers(
+    ctx: CanvasRenderingContext2D,
+    project: (x: number, z: number) => { x: number; y: number; visible: boolean }
+  ): void {
+    for (const marker of WEST_BLOCKOUT_QUEST_MARKERS) {
+      const point = project(marker.x, marker.z);
+      if (!point.visible) {
+        continue;
+      }
+      ctx.fillStyle = `#${marker.color.toString(16).padStart(6, "0")}`;
+      ctx.strokeStyle = "#14110f";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.rect(point.x - 4, point.y - 4, 8, 8);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  function drawCombatants(
+    ctx: CanvasRenderingContext2D,
+    project: (x: number, z: number) => { x: number; y: number; visible: boolean },
+    snapshot: NetworkSnapshot | null
+  ): void {
+    for (const target of snapshot?.combatants ?? []) {
+      const point = project(target.x, target.z);
+      if (!point.visible) {
+        continue;
+      }
+      const ratio = target.maxHealth > 0 ? Math.max(0, Math.min(1, target.health / target.maxHealth)) : 0;
+      ctx.fillStyle = target.alive ? (ratio < 0.35 ? "#e5645a" : "#ffcf3d") : "rgba(255,255,255,0.35)";
+      ctx.strokeStyle = "#14110f";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, target.alive ? 4.5 : 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  function drawPlayers(
+    ctx: CanvasRenderingContext2D,
+    project: (x: number, z: number) => { x: number; y: number; visible: boolean },
+    snapshot: NetworkSnapshot | null
+  ): void {
+    const sessionId = snapshot?.sessionId ?? null;
+    for (const player of snapshot?.players ?? []) {
+      if (player.id === sessionId) {
+        continue;
+      }
+      const point = project(player.x, player.z);
+      if (!point.visible) {
+        continue;
+      }
+      ctx.fillStyle = "#9ed3f2";
+      ctx.strokeStyle = "#14110f";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  function drawPlayerArrow(ctx: CanvasRenderingContext2D, center: number, yaw: number): void {
+    ctx.save();
+    ctx.translate(center, center);
+    ctx.rotate(yaw);
+    ctx.fillStyle = "#f2c66d";
+    ctx.strokeStyle = "#14110f";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, -10);
+    ctx.lineTo(7, 8);
+    ctx.lineTo(0, 4);
+    ctx.lineTo(-7, 8);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
 
   function addNotification(text: string): void {
     const line = document.createElement("div");
@@ -766,11 +1121,32 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
     element.classList.remove("is-paused");
   });
 
+  function applyMapViewState(): void {
+    element.classList.toggle("is-map-view", mapView);
+    minimapCircle.classList.toggle("is-active", mapView);
+    createdMenuButtons[1]?.classList.toggle("is-active", mapView);
+    drawMiniMap(lastSnapshot);
+  }
+
   function toggleMapView(): void {
     mapView = !mapView;
-    element.classList.toggle("is-map-view", mapView);
+    applyMapViewState();
     addNotification(mapView ? "Vue Carte activée" : "Vue Jeu activée");
   }
+
+  minimapCircle.addEventListener("click", () => toggleMapView());
+  minimapCircle.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggleMapView();
+    }
+  });
+  minimapCircle.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    const next = minimapRange + (event.deltaY > 0 ? 8 : -8);
+    minimapRange = Math.max(MINIMAP_MIN_RANGE, Math.min(MINIMAP_MAX_RANGE, next));
+    drawMiniMap(lastSnapshot);
+  }, { passive: false });
 
   // Bind top bar buttons
   createdMenuButtons[0]?.addEventListener("click", () => toggleModal("inventory")); // Sac -> Inventaire
@@ -778,6 +1154,7 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
   createdMenuButtons[2]?.addEventListener("click", () => togglePause());             // Réglages
   createdMenuButtons[3]?.addEventListener("click", () => addNotification("Le mode social arrive bientôt.")); // Social
   invClose.addEventListener("click", () => closeModals());
+  applyMapViewState();
 
   // Zoom slider buttons
   zoomInBtn.addEventListener("click", () => {
@@ -897,8 +1274,74 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
     objectiveStage = stage;
   }
 
+  function renderQuestPanel(snapshot: NetworkSnapshot): void {
+    const aliveTargets = snapshot.combatants.filter((target) => target.alive).length;
+    const signature = [
+      objectiveStage,
+      snapshot.activeEvent,
+      mapState.zone,
+      snapshot.connected ? "online" : "offline",
+      snapshot.combatants.length,
+      aliveTargets
+    ].join("|");
+    if (signature === lastQuestSignature) {
+      return;
+    }
+    lastQuestSignature = signature;
+
+    questBody.replaceChildren(
+      questLine(START_QUEST_TITLE, "title"),
+      questLine(`Zone actuelle : ${mapState.zone}`, "soft"),
+      questLine(`Événement serveur : ${snapshot.activeEvent}`, "soft"),
+      questDivider(),
+      questStepLine("1", "Parler à Tatie Snack au départ du sentier.", objectiveStage >= 1, objectiveStage === 0),
+      questStepLine("2", "Suivre le chemin vers le Chauffeur Car Jaune.", objectiveStage >= 2, objectiveStage === 1),
+      questStepLine("3", "Monter au point de vue Maïdo / Mafate.", objectiveStage >= 3, objectiveStage === 2),
+      questDivider(),
+      questLine(
+        snapshot.combatants.length > 0
+          ? `Cibles PvE visibles : ${aliveTargets}/${snapshot.combatants.length}`
+          : "Cibles PvE : aucune cible reçue du serveur.",
+        "soft"
+      ),
+      questLine(snapshot.connected ? "Connexion monde : active." : "Connexion monde : hors ligne.", "soft")
+    );
+  }
+
+  function questLine(text: string, variant: "title" | "soft"): HTMLDivElement {
+    const line = document.createElement("div");
+    line.textContent = text;
+    if (variant === "title") {
+      line.style.fontWeight = "900";
+      line.style.color = "var(--hud-gold-ink)";
+      return line;
+    }
+    line.style.color = "var(--hud-ink-soft)";
+    line.style.lineHeight = "1.3";
+    return line;
+  }
+
+  function questStepLine(index: string, text: string, done: boolean, current: boolean): HTMLDivElement {
+    const line = document.createElement("div");
+    line.className = `hud-quest-step${done ? " is-done" : ""}${current ? " is-current" : ""}`;
+    const badge = document.createElement("span");
+    badge.className = "hud-quest-step__badge";
+    badge.textContent = done ? "✓" : index;
+    const label = document.createElement("span");
+    label.textContent = text;
+    line.append(badge, label);
+    return line;
+  }
+
+  function questDivider(): HTMLDivElement {
+    const divider = document.createElement("div");
+    divider.className = "hud-quest-divider";
+    return divider;
+  }
+
   function applyConnState(state: ConnState, players: number): void {
-    statusDot.className = `hud-status-dot ${state === "online" ? "online" : state === "connecting" ? "connecting" : "offline"}`;
+    statusCard.dataset.state = state;
+    statusDot.className = `riw-status__dot hud-status-dot ${state === "online" ? "online" : state === "connecting" ? "connecting" : "offline"}`;
     if (state === "connecting") {
       statusLabel.textContent = "Connexion...";
     } else if (state === "offline") {
@@ -919,8 +1362,15 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
     setZone(label) {
       statusZone.textContent = label;
     },
+    setMapState(state) {
+      mapState = state;
+      drawMiniMap(lastSnapshot);
+    },
     setObjectiveStage(stage) {
       setObjectiveStage(stage);
+    },
+    setHealth(state) {
+      updateHealth(state);
     },
     setDebug(info) {
       if (!info) {
@@ -931,6 +1381,7 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
       debugPanel.textContent = `${info.fps} fps | zone: ${info.zone} | pos: ${info.pos[0]}, ${info.pos[1]}, ${info.pos[2]}`;
     },
     update(snapshot) {
+      lastSnapshot = snapshot;
       const now = performance.now();
       if (firstUpdateAt === 0) {
         firstUpdateAt = now;
@@ -946,6 +1397,19 @@ export function createHud(network: NetworkClient, input: InputController): HudCo
         chatInput.disabled = true;
       }
       applyConnState(state, snapshot.players.length);
+      renderQuestPanel(snapshot);
+      drawMiniMap(snapshot);
+
+      // Barre de vie combat (etat serveur).
+      updateHealth(snapshot.self);
+
+      // Notification recompense (souvenir) quand CE joueur detruit une cible.
+      if (snapshot.defeatSeq !== lastDefeatSeq) {
+        lastDefeatSeq = snapshot.defeatSeq;
+        if (snapshot.lastDefeated) {
+          addNotification(`Vaincu : ${snapshot.lastDefeated.targetName} — souvenir : ${snapshot.lastDefeated.reward}`);
+        }
+      }
 
       // Active dialogue override
       if (snapshot.dialogue) {

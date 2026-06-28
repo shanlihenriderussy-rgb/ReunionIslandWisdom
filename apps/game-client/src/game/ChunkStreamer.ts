@@ -17,6 +17,11 @@ type ChunkEntry = {
   bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
   file: string;
   triangles?: number;
+  lods?: Array<{
+    level: number;
+    file: string;
+    triangles?: number;
+  }>;
 };
 
 type ChunkManifest = {
@@ -99,6 +104,11 @@ export function createChunkStreamer(
     queue.push(chunk);
   }
 
+  function selectChunkFile(chunk: ChunkEntry): string {
+    const lod0 = chunk.lods?.find((entry) => entry.level === 0 && entry.file);
+    return lod0?.file ?? chunk.file;
+  }
+
   function pump(): void {
     while (loading.size < maxConcurrent && queue.length > 0) {
       const chunk = queue.shift();
@@ -109,8 +119,9 @@ export function createChunkStreamer(
       if (loaded.has(k) || loading.has(k)) {
         continue;
       }
+      const chunkFile = selectChunkFile(chunk);
       loading.add(k);
-      void loadGltfGroup(chunk.file)
+      void loadGltfGroup(chunkFile)
         .then(({ scene: model }) => {
           loading.delete(k);
           // Le chunk a pu etre marque hors-rayon entre-temps.
@@ -131,7 +142,7 @@ export function createChunkStreamer(
         })
         .catch((error: unknown) => {
           loading.delete(k);
-          console.warn(`Chunk load failed: ${chunk.file}`, error);
+          console.warn(`Chunk load failed: ${chunkFile}`, error);
         });
     }
   }
