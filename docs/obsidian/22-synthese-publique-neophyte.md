@@ -1,3 +1,43 @@
+## 2026-06-28 07:40 - Les routes epousent enfin le relief
+
+En clair :
+
+- Avant, les chemins et routes entre les zones etaient des barres droites posees a plat : elles flottaient au-dessus des vallees et s'enfoncaient dans les collines.
+- Maintenant chaque route est « posee » sur le sol point par point : elle monte, descend et ondule avec le terrain.
+- En bonus, le trace evite un peu les pentes les plus raides au lieu de foncer tout droit dedans.
+- Le sol sur lequel on marche a ete recale pareil, donc le joueur suit la route au lieu de marcher dans le vide.
+
+Impact :
+
+- Les routes ont l'air credibles dans un relief aussi accidente que La Reunion.
+- Premiere base pour de vrais itineraires (lacets, cols) plus tard.
+
+Statut :
+
+- Verifie en isole (relief de test) : routes qui suivent le sol, aucun trou, pentes raides adoucies.
+- A finaliser cote Shan : verification en jeu (`?mapDebug`).
+- Detail : [[iterations/2026-06-28-biomes-propres-v1]].
+
+## 2026-06-28 07:08 - Cotes plus nettes + un petit ponton sur la cote est
+
+En clair :
+
+- Avant, le bord de l'ile faisait des « marches d'escalier » la ou la terre rencontre la mer (effet pixellise).
+- On a corrige a la source : le trait de cote suit maintenant la vraie forme de l'ile, donc des bords plus doux tout autour.
+- On a aussi ajoute un petit ponton en bois (embarcadere) sur la cote est. Il avance au-dessus de l'eau avec une plateforme en T au bout.
+- On peut maintenant marcher sur son tablier et son ponton ; son usage de mission reste a definir.
+
+Impact :
+
+- L'ile parait plus soignee et credible vue de loin.
+- La cote est gagne un point de repere, premiere brique pour un futur lieu (peche, transport...).
+
+Statut :
+
+- Verifie en isole : aucun triangle casse, trait de cote ~18 % plus lisse.
+- Verifie cote code et runtime local : generation terrain relancee, typecheck/lint/build OK, jeu charge en `?mapDebug`.
+- Detail : [[iterations/2026-06-28-littoral-lisse-embarcadere]].
+
 ## 2026-06-27 22:19 - Une vraie mini-carte jouable dans le HUD
 
 En clair :
@@ -1484,3 +1524,90 @@ Statut :
 
 - Correctif fait et verifie. Verification finale (typecheck/build) a refaire sous Windows.
 - Detail : [[iterations/2026-06-27-fix-equipment-invariant-slot]].
+
+## 2026-06-28 - Plateformes et embarcadere marchables
+
+En clair :
+
+- Les grands blocs du depart Ouest ne sont plus juste decoratifs.
+- Le joueur peut maintenant marcher dessus via des surfaces de collision dediees.
+- L'embarcadere cote est a aussi un sol de gameplay : tablier + ponton en T.
+
+Impact :
+
+- Le visuel et le deplacement racontent la meme chose.
+- Le ponton peut servir plus tard a une quete peche, transport ou depart bateau.
+- La collision reste blockout : simple et stable, pas encore une physique Rapier complete.
+
+Statut :
+
+- Typecheck, lint et build OK.
+- Test runtime `?mapDebug` OK, sans erreur console nouvelle.
+- Detail : [[iterations/2026-06-28-littoral-lisse-embarcadere]].
+
+Correctif supplementaire :
+
+- Les dalles ont maintenant un volume lateral : on ne traverse plus leurs faces verticales.
+- Les rochers qui bloquaient le joueur ont aussi un petit dessus marchable quand leur hauteur le permet.
+- Ces objets ont une tolerance de montee locale : on ne rend pas toutes les falaises faciles, seulement les volumes prevus pour etre montables.
+- Verification : au spawn montre par Shan, le joueur est remonte de `y=0.6` a `y=0.9`, donc il est porte par la dalle au lieu d'etre dedans.
+
+## 2026-06-28 - Tous les biomes ont un blockout V0
+
+En clair :
+
+- Les autres zones ont maintenant chacune un signal visuel jouable.
+- Route du Littoral : route noire, murets basaltiques, marqueurs jaunes.
+- Saint-Denis : place creole, batiments, palmiers.
+- Piton des Neiges : sommet/cairn.
+- Mafate : pont de ravine et abri de sentier.
+- Salazie : cascade, ruisseau, vegetation humide.
+- Cilaos : bassin thermal, case, vegetation de cirque.
+- Plaine des Palmistes : corridor vert humide.
+- Sud Sauvage : cote basaltique, eau vive, vegetation dense.
+
+Impact :
+
+- La carte n'est plus seulement Ouest + Volcan.
+- `?mapDebug` reste centre sur la vue propre.
+- Les biomes bruts sont reserves a l'URL d'audit `?visualZone=all&mapDebug`.
+- Ce sont des blockouts : ils cadrent la direction, pas des assets finaux.
+
+Statut :
+
+- Typecheck, lint et build OK.
+- Runtime `?mapDebug` recharge OK, sans erreur console nouvelle.
+- Detail : [[iterations/2026-06-28-biomes-blockout-v0]].
+
+Suite V0+ :
+
+- Les biomes sont maintenant relies par un reseau visible.
+- Les routes ont une bande asphalte + trait jaune.
+- Les sentiers ont une bande terre + pierres de rive.
+- Chaque biome a gagne des details de lecture : tunnels Route Littoral, marche et scene maloya a Saint-Denis, lacets de montagne, ponts de Mafate/Salazie, vapeur Cilaos, brume Plaine des Palmistes, stacks basaltiques Sud Sauvage.
+- Validation : typecheck, lint, build OK ; audit global reserve a `?visualZone=all&mapDebug`.
+
+Correction qualite :
+
+- Le chargement automatique de tous les blockouts dans `?mapDebug` etait trop sale visuellement.
+- `?mapDebug` ne force plus `visualZone=all`.
+- Les biomes V0+ restent en debug explicite seulement.
+
+## 2026-06-28 16:21 +04:00 - Biomes repris proprement
+
+En clair :
+
+- Les biomes brouillons ont ete remplaces par une version plus sobre.
+- On peut maintenant inspecter un biome a la fois avec `?visualZone=<nom-du-biome>&mapDebug`.
+- Les chemins entre zones suivent mieux le relief : ils sont densifies, ajustes vers les pentes plus douces, puis transformes en petites surfaces marchables.
+
+Impact :
+
+- Moins de pollution visuelle.
+- Les liaisons racontent mieux le denivele de La Reunion.
+- La suite peut se faire zone par zone, sans remplir toute l'ile avec des objets moyens.
+
+Statut :
+
+- Typecheck et lint client OK.
+- Detail : [[iterations/2026-06-28-biomes-propres-v1]].

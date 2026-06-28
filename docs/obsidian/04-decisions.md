@@ -651,3 +651,26 @@ Consequence :
 - Toute future definition incoherente (objet non portable avec un slot, ou inversement) est rejetee a la source.
 
 Detail : [[iterations/2026-06-27-fix-equipment-invariant-slot]].
+
+## ADR-019 — Lissage du littoral au build terrain + embarcadere generique (2026-06-28)
+
+Statut : accepte (regen terrain a relancer).
+
+Contexte :
+
+- Litoral en escalier : `tools/build-lareunion-dem-terrain.mjs` decoupe le mesh cellule par cellule (test du centre dans l'outline) -> silhouette en marches a la resolution de grille.
+- Choix Shan : corriger a la source (regen) plutot qu'un overlay cosmetique cote client.
+
+Decision :
+
+- Lissage au build : les sommets de rive sont projetes sur l'outline OSM, avec un garde-fou anti-inversion de triangle (reduction iterative de l'offset -> 0 flip garanti). Snap deterministe partage mono/chunks (pas de couture, normales globales conservees).
+- La collision reste le heightfield brut (la physique ne change pas) ; seul le mesh visuel est lisse.
+- Port = embarcadere generique procedurale (pas Le Port, pas marina nommee), ancree au littoral est pres de (65, 33). Visuel seul au stade blockout. Exception assumee a la regle « pas d'asset sans role » : demande explicite Shan, geometrie generee (aucune licence a tracer).
+
+Consequence :
+
+- `terrain:dem` doit etre relance ; il ecrase GLB + chunks + collision + manifest (reversible git).
+- Validation isolee : 0 triangle retourne/degenere, perimetre littoral -18 %.
+- Role gameplay de l'embarcadere + collision tablier : a definir plus tard.
+
+Detail : [[iterations/2026-06-28-littoral-lisse-embarcadere]].

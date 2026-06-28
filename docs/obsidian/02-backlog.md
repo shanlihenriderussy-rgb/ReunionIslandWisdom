@@ -8,6 +8,10 @@ Ordre P1 acté : (1) HUD mock caché (lève no-go audit) → (2) nappe lave + fu
 - [x] Fix : vegetation Ouest qui flottait — pose desormais sur les heightfields de chunks (relief visible = sol joueur) au lieu de `reliefCollision`. Voir [[iterations/2026-06-27-fix-vegetation-flottante]]. (2026-06-27, signale par screenshot Shan ; a confirmer visuel)
 - [x] Fix : bosquets Mafate / Maido flottants — suppression du `y` fixe, pose par heightfield de chunk. Voir [[iterations/2026-06-27-fix-bosquets-mafate-hauteur]]. (2026-06-27, reprise apres fix Claude ; a confirmer visuel)
 - [x] HUD : vraie mini-carte temps reel (joueur, chemin, zones, marqueurs, cibles, autres joueurs) + journal de quete non mock. Voir [[iterations/2026-06-27-hud-minicarte-runtime]]. (2026-06-27)
+- [x] Littoral : lisser les bords pixellises de l'ile — snap des sommets de rive sur l'outline OSM au build (`build-lareunion-dem-terrain.mjs`), garde-fou anti-flip. `pnpm terrain:dem`, typecheck/lint/build et runtime `?mapDebug` OK. Voir [[iterations/2026-06-28-littoral-lisse-embarcadere]]. (2026-06-28)
+- [x] Embarcadere generique cote est (~(65,33)) : jetee blockout procedurale + surfaces marchables tablier/ponton. Role gameplay a definir. Voir [[iterations/2026-06-28-littoral-lisse-embarcadere]]. (2026-06-28)
+- [x] Biomes restants V0 : Route Littoral, Saint-Denis, Piton des Neiges, Mafate, Salazie, Cilaos, Plaine des Palmistes, Sud Sauvage. Blockouts proceduraux + collisions/surfaces minimales. Voir [[iterations/2026-06-28-biomes-blockout-v0]]. (2026-06-28)
+- [ ] Routes/sentiers entre biomes drapes sur le relief (fin des barres droites flottantes au-dessus des vallees) + surfaces marchables alignees sur le trace. Livre via la passe biomes V1 (`terrainAwarePath` / `relaxPathAgainstSlope` / `buildDrapedRibbon`). Verif `?mapDebug` a faire. Voir [[iterations/2026-06-28-biomes-propres-v1]]. (2026-06-28)
 
 ## Bugs priorises (P0-P3)
 
@@ -159,5 +163,8 @@ Detail complet : [[24-hebergement-production]]. Decision : [[04-decisions]] ADR-
 - [x] P1 : empecher le chargement du GLB monolithique quand le terrain streame par chunks est actif. Implemente via sonde `shouldUseChunkStreaming()` dans `world.ts`. Voir [[iterations/2026-06-26-glb-monolithique-guard]].
 - [ ] P2 : revalider densite vegetation, couleur noire residuelle, chemin orange et plateformes sable apres nouvelle capture.
 - [ ] P2 : revalider la ressemblance B1 par capture desktop/mobile apres la passe Codex.
+- [x] Rendre marchables les grandes plateformes Ouest + l'embarcadere est via surfaces rectangulaires de collision. Voir [[iterations/2026-06-28-littoral-lisse-embarcadere]]. (2026-06-28)
+- [x] Refaire les biomes hors Ouest en V1 propre : inspection biome par biome, chemins drapes et ajustes au denivele, moins de props decoratifs. Voir [[iterations/2026-06-28-biomes-propres-v1]]. (2026-06-28)
+- [ ] Playtest visuel de chaque biome V1 : `route-littoral`, `saint-denis`, `mafate`, `salazie`, `cilaos`, `plaine-palmistes`, `sud-sauvage`.
 - [ ] Revalider en PWA / Chrome apres build hors sandbox.
 - [x] Package web robuste : staging versionne pour eviter les dossiers verrouilles par serveur local.

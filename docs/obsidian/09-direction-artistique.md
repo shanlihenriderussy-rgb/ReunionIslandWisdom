@@ -210,6 +210,13 @@ Regle DA :
 - Ne pas remplir toute l'ile avec des props moyens.
 - Construire des scenes fortes et lisibles, puis etendre.
 
+Update 2026-06-28 :
+
+- Les biomes hors Ouest ne doivent plus etre presentes comme un gros blockout global par defaut.
+- Inspection autorisee biome par biome via `?visualZone=<biome>&mapDebug`.
+- Les liaisons doivent suivre le relief et rester sobres : chemin lisible, pente plausible, peu de props.
+- `?visualZone=all&mapDebug` reste un outil d'audit technique, pas une cible visuelle.
+
 ## Rendu runtime actuel
 
 - Tone mapping ACES + exposition chaude.
@@ -220,3 +227,4 @@ Regle DA :
 - Sable : plus de ruban vectoriel runtime. Les zones sable sont fusionnees au terrain par vertex colors, uniquement sur Saint-Paul/Saint-Gilles, sud et nord-ouest basse altitude.
 - Troisieme personne : camera rapprochee conservee. L'effet "joueur plus petit que la carte" vient de l'echelle monde, pas d'un recul camera.
 - Iteration 2026-06-05 21:37 : mesh terrain passe a `320 x 288`, couleurs renforcees par altitude/secteur/pente, brume repoussee pour une meilleure lecture en vue carte.
+- Iteration 2026-06-28 : littoral lisse au build (sommets de rive projetes sur l'outline OSM, garde-fou anti-flip) -> fin de l'effet escalier. Ajout d'un embarcadere generique low-poly cote est (bois, pieux + tablier + ponton en T, ~700 tris, geometrie procedurale, aucun asset externe). Role gameplay a definir. Voir [[iterations/2026-06-28-littoral-lisse-embarcadere]].
