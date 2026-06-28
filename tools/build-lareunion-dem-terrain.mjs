@@ -556,15 +556,21 @@ function computeTerrainSlope(heights, x, z) {
   return Math.sqrt(dx * dx + dz * dz);
 }
 
-function createReliefMesh(bounds, outline, heights) {
+function createReliefMesh(bounds, heights, kept, coastSnap) {
   const vertices = [];
   const colors = [];
   const indices = [];
   for (let z = 0; z < gridZ; z += 1) {
     for (let x = 0; x < gridX; x += 1) {
-      const worldX = bounds.minX + (x / (gridX - 1)) * (bounds.maxX - bounds.minX);
-      const worldZ = bounds.minZ + (z / (gridZ - 1)) * (bounds.maxZ - bounds.minZ);
-      const height = heights[z * gridX + x];
+      let worldX = bounds.minX + (x / (gridX - 1)) * (bounds.maxX - bounds.minX);
+      let worldZ = bounds.minZ + (z / (gridZ - 1)) * (bounds.maxZ - bounds.minZ);
+      let height = heights[z * gridX + x];
+      const snapped = coastSnap.get(z * gridX + x);
+      if (snapped) {
+        worldX = snapped.x;
+        worldZ = snapped.z;
+        height = sampleHeightWorld(heights, bounds, worldX, worldZ);
+      }
       const color = getTerrainColor(worldX, worldZ, height, computeTerrainSlope(heights, x, z));
       vertices.push(worldX, height, worldZ);
       colors.push(color.r, color.g, color.b);
@@ -573,9 +579,7 @@ function createReliefMesh(bounds, outline, heights) {
 
   for (let z = 0; z < gridZ - 1; z += 1) {
     for (let x = 0; x < gridX - 1; x += 1) {
-      const centerX = bounds.minX + ((x + 0.5) / (gridX - 1)) * (bounds.maxX - bounds.minX);
-      const centerZ = bounds.minZ + ((z + 0.5) / (gridZ - 1)) * (bounds.maxZ - bounds.minZ);
-      if (!pointInPolygon(centerX, centerZ, outline)) {
+      if (!cellKept(kept, x, z)) {
         continue;
       }
       const a = z * gridX + x;
@@ -603,7 +607,7 @@ function createReliefMesh(bounds, outline, heights) {
   );
 }
 
-function createReliefChunkMesh(bounds, outline, heights, range, name, globalNormals) {
+function createReliefChunkMesh(bounds, heights, range, name, globalNormals, kept, coastSnap) {
   const localGridX = range.xEnd - range.xStart + 1;
   const localGridZ = range.zEnd - range.zStart + 1;
   const vertices = [];
@@ -613,10 +617,16 @@ function createReliefChunkMesh(bounds, outline, heights, range, name, globalNorm
 
   for (let z = range.zStart; z <= range.zEnd; z += 1) {
     for (let x = range.xStart; x <= range.xEnd; x += 1) {
-      const worldX = bounds.minX + (x / (gridX - 1)) * (bounds.maxX - bounds.minX);
-      const worldZ = bounds.minZ + (z / (gridZ - 1)) * (bounds.maxZ - bounds.minZ);
+      let worldX = bounds.minX + (x / (gridX - 1)) * (bounds.maxX - bounds.minX);
+      let worldZ = bounds.minZ + (z / (gridZ - 1)) * (bounds.maxZ - bounds.minZ);
       const globalIndex = z * gridX + x;
-      const height = heights[globalIndex];
+      let height = heights[globalIndex];
+      const snapped = coastSnap.get(globalIndex);
+      if (snapped) {
+        worldX = snapped.x;
+        worldZ = snapped.z;
+        height = sampleHeightWorld(heights, bounds, worldX, worldZ);
+      }
       const color = getTerrainColor(worldX, worldZ, height, computeTerrainSlope(heights, x, z));
       vertices.push(worldX, height, worldZ);
       colors.push(color.r, color.g, color.b);
@@ -630,9 +640,7 @@ function createReliefChunkMesh(bounds, outline, heights, range, name, globalNorm
 
   for (let z = range.zStart; z < range.zEnd; z += 1) {
     for (let x = range.xStart; x < range.xEnd; x += 1) {
-      const centerX = bounds.minX + ((x + 0.5) / (gridX - 1)) * (bounds.maxX - bounds.minX);
-      const centerZ = bounds.minZ + ((z + 0.5) / (gridZ - 1)) * (bounds.maxZ - bounds.minZ);
-      if (!pointInPolygon(centerX, centerZ, outline)) {
+      if (!cellKept(kept, x, z)) {
         continue;
       }
       const localX = x - range.xStart;
@@ -711,7 +719,7 @@ async function cleanChunkOutputs() {
   );
 }
 
-async function exportTerrainChunks(projectedBounds, outline, heights, heightsMeters, globalNormals, worldMapping) {
+async function exportTerrainChunks(projectedBounds, heights, heightsMeters, globalNormals, worldMapping, kept, coastSnap) {
   await cleanChunkOutputs();
   const chunks = [];
   const ranges = buildChunkRanges();
@@ -721,11 +729,12 @@ async function exportTerrainChunks(projectedBounds, outline, heights, heightsMet
     const chunkName = `lareunion-terrain-${index}`;
     const mesh = createReliefChunkMesh(
       projectedBounds,
-      outline,
       heights,
       range,
       `LaReunionRgeAltiTerrain_${index}`,
-      globalNormals
+      globalNormals,
+      kept,
+      coastSnap
     );
     const scene = new THREE.Scene();
     scene.name = `LaReunionRgeAltiChunk_${index}`;
@@ -823,6 +832,164 @@ function pointInPolygon(x, z, polygon) {
   return inside;
 }
 
+// --- Lissage du littoral ---------------------------------------------------
+// L'inclusion binaire par cellule (pointInPolygon sur le centre) produit un
+// littoral en escalier a la resolution de la grille. On lisse en projetant les
+// sommets de rive sur l'outline OSM, avec un garde-fou anti-inversion de triangle.
+const COAST_SNAP_MAX = 1.6; // u : distance max de projection d'un sommet de rive
+
+function computeKeptGrid(bounds, outline) {
+  const cellsX = gridX - 1;
+  const cellsZ = gridZ - 1;
+  const kept = new Uint8Array(cellsX * cellsZ);
+  for (let z = 0; z < cellsZ; z += 1) {
+    for (let x = 0; x < cellsX; x += 1) {
+      const centerX = bounds.minX + ((x + 0.5) / (gridX - 1)) * (bounds.maxX - bounds.minX);
+      const centerZ = bounds.minZ + ((z + 0.5) / (gridZ - 1)) * (bounds.maxZ - bounds.minZ);
+      kept[z * cellsX + x] = pointInPolygon(centerX, centerZ, outline) ? 1 : 0;
+    }
+  }
+  return kept;
+}
+
+function cellKept(kept, cx, cz) {
+  const cellsX = gridX - 1;
+  const cellsZ = gridZ - 1;
+  if (cx < 0 || cz < 0 || cx >= cellsX || cz >= cellsZ) {
+    return false;
+  }
+  return kept[cz * cellsX + cx] === 1;
+}
+
+// Sommet sur la rive : au moins une cellule adjacente gardee ET une non gardee (ou hors grille).
+function isCoastVertex(kept, x, z) {
+  const a = cellKept(kept, x - 1, z - 1);
+  const b = cellKept(kept, x, z - 1);
+  const c = cellKept(kept, x - 1, z);
+  const e = cellKept(kept, x, z);
+  return (a || b || c || e) && (!a || !b || !c || !e);
+}
+
+function nearestPointOnOutline(px, pz, outline) {
+  let bx = px;
+  let bz = pz;
+  let best = Infinity;
+  for (let i = 0; i < outline.length; i += 1) {
+    const a = outline[i];
+    const b = outline[(i + 1) % outline.length];
+    const abx = b.x - a.x;
+    const abz = b.z - a.z;
+    const len2 = abx * abx + abz * abz || 1e-9;
+    let t = ((px - a.x) * abx + (pz - a.z) * abz) / len2;
+    t = THREE.MathUtils.clamp(t, 0, 1);
+    const qx = a.x + abx * t;
+    const qz = a.z + abz * t;
+    const dx = px - qx;
+    const dz = pz - qz;
+    const dist = dx * dx + dz * dz;
+    if (dist < best) {
+      best = dist;
+      bx = qx;
+      bz = qz;
+    }
+  }
+  return { x: bx, z: bz, dist: Math.sqrt(best) };
+}
+
+function signedTriArea(ax, az, bx, bz, cx, cz) {
+  return (bx - ax) * (cz - az) - (bz - az) * (cx - ax);
+}
+
+// Projette les sommets de rive sur l'outline, puis reduit l'offset des sommets
+// qui inverseraient un triangle cotier (convergence vers l'original => 0 flip).
+function computeCoastSnap(bounds, outline, kept) {
+  const snap = new Map();
+  const worldX = (x) => bounds.minX + (x / (gridX - 1)) * (bounds.maxX - bounds.minX);
+  const worldZ = (z) => bounds.minZ + (z / (gridZ - 1)) * (bounds.maxZ - bounds.minZ);
+
+  for (let z = 0; z < gridZ; z += 1) {
+    for (let x = 0; x < gridX; x += 1) {
+      if (!isCoastVertex(kept, x, z)) {
+        continue;
+      }
+      const near = nearestPointOnOutline(worldX(x), worldZ(z), outline);
+      if (near.dist <= COAST_SNAP_MAX) {
+        snap.set(z * gridX + x, { x: near.x, z: near.z });
+      }
+    }
+  }
+
+  // Triangles cotiers (cellules gardees touchant >=1 sommet snappe).
+  const cellsX = gridX - 1;
+  const cellsZ = gridZ - 1;
+  const tris = [];
+  for (let z = 0; z < cellsZ; z += 1) {
+    for (let x = 0; x < cellsX; x += 1) {
+      if (kept[z * cellsX + x] !== 1) {
+        continue;
+      }
+      const a = z * gridX + x;
+      const b = a + 1;
+      const c = (z + 1) * gridX + x;
+      const e = c + 1;
+      if (snap.has(a) || snap.has(b) || snap.has(c) || snap.has(e)) {
+        tris.push([a, c, b], [b, c, e]);
+      }
+    }
+  }
+  const ox = (id) => worldX(id % gridX);
+  const oz = (id) => worldZ(Math.floor(id / gridX));
+  const sx = (id) => {
+    const s = snap.get(id);
+    return s ? s.x : ox(id);
+  };
+  const sz = (id) => {
+    const s = snap.get(id);
+    return s ? s.z : oz(id);
+  };
+  for (let pass = 0; pass < 16; pass += 1) {
+    let changed = false;
+    for (const t of tris) {
+      const ref = Math.sign(signedTriArea(ox(t[0]), oz(t[0]), ox(t[1]), oz(t[1]), ox(t[2]), oz(t[2])));
+      const now = signedTriArea(sx(t[0]), sz(t[0]), sx(t[1]), sz(t[1]), sx(t[2]), sz(t[2]));
+      if ((ref !== 0 && Math.sign(now) !== ref) || Math.abs(now) < 1e-5) {
+        for (const id of t) {
+          const s = snap.get(id);
+          if (s) {
+            s.x = (s.x + ox(id)) / 2;
+            s.z = (s.z + oz(id)) / 2;
+          }
+        }
+        changed = true;
+      }
+    }
+    if (!changed) {
+      break;
+    }
+  }
+  return snap;
+}
+
+function sampleHeightWorld(heights, bounds, worldX, worldZ) {
+  const tx = THREE.MathUtils.clamp((worldX - bounds.minX) / (bounds.maxX - bounds.minX), 0, 1);
+  const tz = THREE.MathUtils.clamp((worldZ - bounds.minZ) / (bounds.maxZ - bounds.minZ), 0, 1);
+  const gx = tx * (gridX - 1);
+  const gz = tz * (gridZ - 1);
+  const x0 = Math.floor(gx);
+  const z0 = Math.floor(gz);
+  const x1 = Math.min(gridX - 1, x0 + 1);
+  const z1 = Math.min(gridZ - 1, z0 + 1);
+  const fx = gx - x0;
+  const fz = gz - z0;
+  const h00 = heights[z0 * gridX + x0] ?? 0;
+  const h10 = heights[z0 * gridX + x1] ?? h00;
+  const h01 = heights[z1 * gridX + x0] ?? h00;
+  const h11 = heights[z1 * gridX + x1] ?? h00;
+  const hx0 = h00 + (h10 - h00) * fx;
+  const hx1 = h01 + (h11 - h01) * fx;
+  return hx0 + (hx1 - hx0) * fz;
+}
+
 async function main() {
   const files = await listSourceFiles(sourceDir);
   if (files.length === 0) {
@@ -857,7 +1024,13 @@ async function main() {
   }
 
   const { heights, heightsMeters, minElevation, maxElevation, horizontalScale } = finalizeHeights(accum, sourceBounds);
-  const relief = createReliefMesh(projectedBounds, outline, heights);
+
+  // Lissage littoral : grille gardee (1x) + projection des sommets de rive sur l'outline.
+  const keptGrid = computeKeptGrid(projectedBounds, outline);
+  const coastSnap = computeCoastSnap(projectedBounds, outline, keptGrid);
+  console.info(`Lissage littoral : ${coastSnap.size} sommets de rive projetes sur l'outline OSM.`);
+
+  const relief = createReliefMesh(projectedBounds, heights, keptGrid, coastSnap);
   relief.name = "LaReunionRgeAltiTerrain";
   relief.receiveShadow = true;
   relief.castShadow = false;
@@ -873,7 +1046,7 @@ async function main() {
   await fsp.mkdir(outputDir, { recursive: true });
   const glb = await exportGlb(scene);
   await fsp.writeFile(glbPath, Buffer.from(glb));
-  const chunkManifest = await exportTerrainChunks(projectedBounds, outline, heights, heightsMeters, globalNormals, worldMapping);
+  const chunkManifest = await exportTerrainChunks(projectedBounds, heights, heightsMeters, globalNormals, worldMapping, keptGrid, coastSnap);
 
   const collision = {
     source: terrainSourceName,
