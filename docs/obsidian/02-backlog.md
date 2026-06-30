@@ -29,7 +29,7 @@ Grille et process : voir [[03-playtests]]. Detail par bug : [[_templates/bug]].
 - [x] Fix interaction `E` / bouton parler : fallback dialogue local si Colyseus est offline ou lent. Voir [[iterations/2026-06-26-interaction-e-fallback]].
 - [x] Fix connexion online locale : `Server.listen()` Colyseus officiel + compat reservation serveur 0.17 / client JS 0.16. Voir [[iterations/2026-06-26-interaction-e-fallback]].
 - [x] Mobile : reduire le panneau dialogue en bottom sheet compacte, lisible sans masquer le joueur. Voir [[iterations/2026-06-27-dialogue-mobile-bottom-sheet]].
-- [ ] Migrer la progression de quete dialogue vers un etat serveur authoritative avant recompenses/inventaire.
+- [x] Migrer la progression de quete dialogue vers un etat serveur authoritative avant recompenses/inventaire. `ProgressionStore` serveur (souvenirs + quetes decouvertes, Zod, message prive `progression`). Voir [[iterations/2026-06-29-progression-serveur-authoritative]] / ADR-020. (2026-06-29 ; affichage HUD = slice suivante)
 - [ ] TEST PROD N1 : faire une passe manuelle Chrome/PWA + captures, car l'automatisation navigateur a timeout. Bloque le GO production complet. Voir [[playtests/2026-06-27-test-prod-n1]].
 
 ### P2 — mineur (go possible)
@@ -39,6 +39,8 @@ Grille et process : voir [[03-playtests]]. Detail par bug : [[_templates/bug]].
 ### P3 — cosmetique / confort
 
 - [ ] level-design : ajouter un seuil "sur le sentier" (`isOnWestPath` via `lateral`) pour gater l'affichage du lieu courant — sinon `normalized` reste dans [0,1] meme loin du chemin. (FIX a venir, cf. iterations/2026-06-07-test-progression-sentier-ouest)
+- [ ] game-logic : `ProgressionStore.snapshot()` trier souvenirs/quetes en `localeCompare("fr")` (ordre naturel des chaines accentuees). Non bloquant, deterministe. (TEST 2026-06-29, cf. iterations/2026-06-29-test-game-logic-progression)
+- [ ] game-logic : quand le client consommera le message `progression`, valider l'entrant via `progressionUpdatedSchema.safeParse` (defense en profondeur cote client). (note TEST 2026-06-29)
 
 ## Zone Fournaise (depart) — voir [[12-phase-1-level-design]] / ADR-008
 
@@ -82,7 +84,7 @@ Grille et process : voir [[03-playtests]]. Detail par bug : [[_templates/bug]].
 - [x] Feedback de coup : flash cible + anim de mort + flash joueur (deltas PV snapshot). (slice 3, 2026-06-27)
 - [x] Son combat : SFX procedural Web Audio (`audio/sfx.ts`), aucun asset/dependance. (slice 3)
 - [x] Recompense a la destruction : souvenir envoye serveur-authoritative (`targetDefeated`) -> notif HUD. (slice 3)
-- [ ] Stocker reellement les souvenirs gagnes (depend de l'inventaire serveur).
+- [x] Stocker reellement les souvenirs gagnes : desormais ajoutes (dedup) a la progression serveur (`ProgressionStore`) a la destruction d'une cible. Voir [[iterations/2026-06-29-progression-serveur-authoritative]]. (2026-06-29 ; inventaire complet objets/equipes reste a faire)
 - [ ] Equilibrage combat au ressenti (playtest live) ; ajuster `combatConfig` + data cible.
 - [ ] Relier destruction de cible a une recompense quete.
 - [ ] Equilibrage (HP, degats, respawn) une fois le rendu valide en live.

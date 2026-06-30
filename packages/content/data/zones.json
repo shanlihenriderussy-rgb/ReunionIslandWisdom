@@ -16,5 +16,29 @@
     "name": "Route du Littoral",
     "spawn": { "x": -60, "y": 1.65, "z": -36, "yaw": -0.35 },
     "description": "Mini-zone event autour du bouchon serveur."
+  },
+  {
+    "id": "saint-denis",
+    "name": "Saint-Denis",
+    "spawn": { "x": 4.26, "y": 2, "z": 76.65, "yaw": 3.14 },
+    "description": "Hub social nord : chat, emotes, PNJ et regroupements urbains creoles."
+  },
+  {
+    "id": "mafate",
+    "name": "Cirque de Mafate",
+    "spawn": { "x": -31.23, "y": 6, "z": 22.71, "yaw": 0.8 },
+    "description": "Zone endurance et orientation : sac, ravines, sentiers et points de vue."
+  },
+  {
+    "id": "salazie",
+    "name": "Cirque de Salazie",
+    "spawn": { "x": 22.71, "y": 4, "z": 35.48, "yaw": -2.4 },
+    "description": "Zone eau, cascade et meteo : chemins glissants, ravines et vegetation humide."
+  },
+  {
+    "id": "cilaos",
+    "name": "Cirque de Cilaos",
+    "spawn": { "x": -18.45, "y": 5, "z": -22.71, "yaw": 0.25 },
+    "description": "Zone montagne et thermes : preparation, montee, repos et relief de cirque."
   }
 ]

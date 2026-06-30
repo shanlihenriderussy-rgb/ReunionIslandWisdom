@@ -674,3 +674,26 @@ Consequence :
 - Role gameplay de l'embarcadere + collision tablier : a definir plus tard.
 
 Detail : [[iterations/2026-06-28-littoral-lisse-embarcadere]].
+
+## ADR-020 — Progression joueur serveur-authoritative (store en memoire) (2026-06-29)
+
+Statut : accepte (slice 1 ; persistance durable a venir).
+
+Contexte :
+
+- Parler a un PNJ et vaincre une cible PvE produisaient un feedback ephemere (dialogue, notif souvenir) mais **aucun etat stocke**. Item P1 backlog : migrer la progression vers un etat serveur-authoritative avant recompenses/inventaire.
+
+Decision :
+
+- Progression horizontale (voir [[21-systeme-de-jeu]]) modelisee comme `PlayerProgression` (Zod partage) : `souvenirs[]` + `quetes[]`.
+- Nouveau module **pur** `ProgressionStore` (apps/game-server), sans dependance Colyseus/Three/DOM, sur le modele de `CombatSystem` (testable seul). Dedup via `Set`, snapshot trie deterministe, plafonds 200/100.
+- Source de verite = serveur : decouverte de quete sur `interact` (PNJ donneur, index `questsByGiverNpc` derive du content), souvenir sur `attack` (cible vaincue, `def.reward`). Valeurs jamais issues de l'entree client.
+- Message sortant `progression` envoye **uniquement** au joueur proprietaire (etat prive, pas de broadcast). Additif : le client ignore les messages inconnus -> pas de rupture.
+
+Consequence :
+
+- Debloque le stockage reel des souvenirs combat et le journal de quete non-mock.
+- Persistance en memoire par room ; sauvegarde durable (Supabase) = futur, cf. backlog.
+- Cablage HUD client (affichage) = slice suivante.
+
+Detail : [[iterations/2026-06-29-progression-serveur-authoritative]].

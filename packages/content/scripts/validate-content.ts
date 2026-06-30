@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { z } from "zod";
-import { worldBounds, itemCatalogSchema, combatTargetCatalogSchema } from "@riw/shared";
+import { worldBounds, itemDefinitionSchema, itemCatalogSchema, combatTargetCatalogSchema } from "@riw/shared";
 
 // Équivalent pour ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -74,6 +74,7 @@ function validate() {
   z.array(questSchema).parse(quests);
   itemsSchema.parse(items);
   itemCatalogSchema.parse(itemCatalog);
+  validateItemDefinitionInvariants();
   emotesSchema.parse(emotes);
   combatTargetCatalogSchema.parse(combatTargets);
 
@@ -168,6 +169,50 @@ function validate() {
   verifyListUniqueness(emotes, "emotes");
 
   console.log("✅ Toutes les données ont été validées avec succès !");
+}
+
+function expectItemRejected(label: string, data: unknown): void {
+  const result = itemDefinitionSchema.safeParse(data);
+  if (result.success) {
+    throw new Error(`Test negatif itemDefinitionSchema echoue : ${label} aurait du etre rejete.`);
+  }
+}
+
+function validateItemDefinitionInvariants(): void {
+  console.log("- Validation des invariants negatifs itemDefinitionSchema...");
+
+  expectItemRejected("consommable avec slot", {
+    id: "test-consommable-slot",
+    name: "Test consommable slot",
+    category: "consommable",
+    slot: "main",
+    stackable: true,
+    maxStack: 5,
+    weight: 0.1,
+    description: "Objet de test invalide : un consommable ne doit pas avoir de slot."
+  });
+
+  expectItemRejected("instrument sans slot", {
+    id: "test-instrument-sans-slot",
+    name: "Test instrument sans slot",
+    category: "instrument",
+    slot: "aucun",
+    stackable: false,
+    maxStack: 1,
+    weight: 0.4,
+    description: "Objet de test invalide : un instrument doit avoir un slot reel."
+  });
+
+  expectItemRejected("cle avec slot", {
+    id: "test-cle-slot",
+    name: "Test cle slot",
+    category: "cle",
+    slot: "tete",
+    stackable: false,
+    maxStack: 1,
+    weight: 0.05,
+    description: "Objet de test invalide : une cle ne doit pas avoir de slot."
+  });
 }
 
 try {

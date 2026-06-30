@@ -97,6 +97,23 @@ export type TargetDefeated = z.infer<typeof targetDefeatedSchema>;
 export type CombatantSnapshotDto = z.infer<typeof combatantSnapshotSchema>;
 export type ServerSnapshot = z.infer<typeof serverSnapshotSchema>;
 
+// --- Progression joueur (serveur authoritative) ---
+// Etat horizontal (pas de puissance brute) : souvenirs gagnes + quetes decouvertes.
+// Source de verite = serveur. Le client recoit "progression" et affiche seulement.
+// Listes dedupliquees + triees cote serveur pour un rendu deterministe.
+
+export const playerProgressionSchema = z.object({
+  // souvenirs gagnes (ex: recompense d'une cible PvE vaincue)
+  souvenirs: z.array(z.string().min(1).max(80)).max(200),
+  // ids de quetes decouvertes (en parlant a un PNJ donneur)
+  quetes: z.array(z.string().min(1).max(60)).max(100)
+});
+
+// Message serveur -> client envoye a chaque changement de progression.
+export const progressionUpdatedSchema = playerProgressionSchema;
+
+export type PlayerProgression = z.infer<typeof playerProgressionSchema>;
+
 // --- Equipement / inventaire (data cote serveur) ---
 // Source de verite partagee client/serveur pour les definitions d'objets.
 

@@ -4,18 +4,28 @@ Cycle : 1 phase par jour. DEV -> TEST -> FIX -> chantier suivant.
 
 ## Etat courant
 
-- phase: DEV
+- phase: FIX
 - chantier: game-logic
 - prochain_chantier: enemy
 
-## Feature livree (a tester au prochain run TEST)
+## Feature testee (resultat phase TEST 2026-06-29 18:10)
 
-- equipment : catalogue d'objets structure cote data/serveur.
-  - `packages/shared/src/protocol.ts` : `itemDefinitionSchema` (Zod) + `itemCatalogSchema` + `superRefine` (equipement -> slot != "aucun" ; non empilable -> maxStack 1). Types `ItemDefinition` / `ItemCategory` / `EquipmentSlot`.
-  - `packages/content/data/item-catalog.json` : 20 objets (id, name, category, slot, stackable, maxStack, weight, description) couvrant chaque id de `items.json`.
-  - `packages/content/src/index.ts` : export `itemCatalog` type `ItemDefinition[]`.
-  - `packages/content/scripts/validate-content.ts` : parse Zod du catalogue + integrite items.json<->catalogue (inclusion + completude) + unicite ids.
-  - A verifier au TEST : `corepack pnpm --filter @riw/shared typecheck`, `corepack pnpm --filter @riw/content typecheck` (lance `validate:content`), `corepack pnpm typecheck` + `lint` sous Windows.
+- game-logic : progression joueur serveur-authoritative (souvenirs + quetes decouvertes).
+- Sandbox `node` (vrai `zod@4.4.3`) : 33/33 PASS.
+  - Schema `playerProgressionSchema` : vide OK, nominal OK ; rejets OK (souvenir vide, >80, quete >60, >200 souvenirs, >100 quetes, type non-string, champ manquant).
+  - `ProgressionStore` (logique rejouee fidele) : snapshot joueur inconnu = vide (pas de crash) ; premier ajout=true / doublon=false (souvenirs ET quetes) ; `trim` applique et valeur trimmee stockee ; souvenir blanc refuse ; snapshot trie ; plafonds 200 souvenirs / 100 quetes respectes ; `forget` vide bien la progression.
+  - Integration room (data content reelle) : parler donneur `tatie-snack` => quete decouverte ; reparler => pas de nouvelle decouverte ; PNJ non-donneur (`guide-volcan`) => 0 quete ; vaincre `galet-roulant-1` => souvenir `Galet poli` ; re-tuer => doublon ignore.
+  - Integrite content : tous les `giverNpcId` des 6 quetes existent dans `npcs.json` ; tous les `reward` des 6 cibles passent la contrainte souvenir et sont UNIQUES (le dedup ne masque pas 2 cibles distinctes) ; tous les `quest.id` passent la contrainte quete.
+- `node --experimental-strip-types --check` : exit 0 sur les 3 fichiers (syntaxe OK).
+- Securite : envoi `progression` PRIVE au seul proprietaire (pas de broadcast, pas d'IDOR) ; valeurs issues du content serveur (jamais d'input client) ; dedup `Set` + plafonds 200/100 (anti-spam/DoS memoire) ; `onLeave` -> `forget` (pas de fuite inter-session) ; pas de `any` (un `as ProgressionRuntime` commente, garanti par `ensure`) ; pas de DOM/logique client cote serveur ; cooldowns/distance interact non regresses.
+- FINDING (mineur, non bloquant) : `snapshot()` trie avec `Array.sort()` lexicographique non-localise. Les souvenirs accentues ("Cendre tiede", "Eclat de bois flotte") sont classes apres les lettres ASCII (ordre deterministe mais pas naturel francais). Candidat polish FIX : `localeCompare("fr")`.
+- NOTE (futur, hors chantier game-logic) : le client ne consomme pas encore le message `progression` ; quand il le fera, valider l'entrant via `progressionUpdatedSchema.safeParse` cote client (defense en profondeur).
+- typecheck/lint projet : a relancer sous Windows (mount Linux : symlinks pnpm casses ; native `tsc@6.0.3` isole renvoie un faux parse error sur CRLF -> artefact outil, pas un defaut code).
+
+## A corriger / polish (FIX game-logic du run suivant)
+
+- [ ] game-logic (polish) : `ProgressionStore.snapshot()` -> trier souvenirs/quetes avec `localeCompare("fr")` pour un ordre naturel des chaines accentuees. Reste deterministe. Aucun changement de surface reseau.
+- Aucun bug bloquant trouve au TEST.
 
 ## Feature testee (resultat phase TEST 2026-06-27 19:22)
 
@@ -100,6 +110,8 @@ Cycle : 1 phase par jour. DEV -> TEST -> FIX -> chantier suivant.
 - 2026-06-26 22:31 — DEV equipment : catalogue d'objets structure (`item-catalog.json`, 20 objets) + schema Zod partage `itemDefinitionSchema`/`itemCatalogSchema` (`protocol.ts`) + export `itemCatalog` + validation content (Zod + integrite + completude + unicite). Donnees pures, zero impact client/serveur runtime. Sanity Zod sandbox (zod 4.4.3 reel) : 20 objets parses, integrite/unicite OK. Typecheck isole du bloc schema (tsc 6.0.3 reel, strict) : 0 erreur. tsc projet complet bloque par troncature du mount Linux (lag connu) -> a relancer sous Windows. Round-robin reste equipment (phase TEST demain). Phase suivante : TEST. Cf. [[../iterations/2026-06-26-equipment-item-catalog]].
 - 2026-06-27 19:22 — TEST equipment : catalogue + schema valides avec le vrai `zod@4.4.3`. Parse 20 objets OK, integrite items<->catalogue OK, unicite OK, 4 tests negatifs rejetes OK. Data propre (7 equipements coherents). 1 finding mineur non bloquant : invariant inverse manquant (`kayamb`/instrument a un slot ; categories non-equipables pourraient recevoir un slot). Loggé comme FIX. typecheck/lint projet a relancer sous Windows (symlinks pnpm casses). Phase suivante : FIX. Cf. [[../iterations/2026-06-27-test-equipment-catalogue]].
 - 2026-06-27 19:40 — FIX equipment : invariant inverse du slot ajoute (`itemDefinitionSchema.superRefine`, `protocol.ts`) + constante `equippableCategories`. Verif zod reel : catalogue PASS (20), rejets attendus OK ; tsc 6.0.3 strict OK (snippet). 0 regression data. Securite : durcit la validation serveur, aucune surface ajoutee. Round-robin -> game-logic. Phase suivante : DEV. Cf. [[../iterations/2026-06-27-fix-equipment-invariant-slot]].
+- 2026-06-29 15:23 — DEV game-logic : progression joueur serveur-authoritative. `playerProgressionSchema` (Zod, additif) + module pur `ProgressionStore` (souvenirs + quetes, dedup `Set`, snapshot trie, plafonds 200/100) + cablage room (onJoin/onLeave, decouverte quete sur `interact` PNJ donneur, souvenir sur `attack` cible vaincue, message PRIVE `progression`). Sanity Zod sandbox 13/13 PASS ; `node --strip-types --check` OK sur les 3 fichiers ; typecheck/lint projet a relancer sous Windows (symlinks pnpm casses sur mount). Securite OK (envoi au seul proprietaire, valeurs content serveur, dedup+plafonds). Debloque backlog P1 progression + stockage souvenirs combat. Round-robin reste game-logic (TEST demain). Phase suivante : TEST. Cf. [[../iterations/2026-06-29-progression-serveur-authoritative]] / ADR-020.
+- 2026-06-29 18:10 — TEST game-logic : progression validee. Sandbox node (vrai `zod@4.4.3`) 33/33 PASS (schema valide/rejets, `ProgressionStore` dedup/trim/plafonds 200-100/snapshot trie/forget, integration room parler-donneur/vaincre-cible/doublon, integrite content : giverNpcId existants + rewards uniques et valides). `node --strip-types --check` OK sur les 3 fichiers. Securite re-auditee : envoi prive, valeurs content, dedup+plafonds, pas d'IDOR/any/DOM. 0 bug bloquant. 1 polish loggé (snapshot `localeCompare("fr")` pour souvenirs accentues) + 1 note futur (validation client du message `progression`). typecheck/lint projet a relancer sous Windows. Round-robin reste game-logic (FIX demain). Phase suivante : FIX. Cf. [[../iterations/2026-06-29-test-game-logic-progression]].
 
 ## Validation distribution 2026-06-25 03:19
 

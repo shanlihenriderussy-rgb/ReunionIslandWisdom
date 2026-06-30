@@ -1,3 +1,44 @@
+## 2026-06-29 18:10 - On a verifie que la memoire du jeu ne se trompe pas
+
+En clair :
+
+- Hier on a ajoute la « memoire de joueur » (quetes decouvertes + souvenirs gagnes). Aujourd'hui on l'a passee au banc d'essai.
+- 33 controles automatiques : tous OK. Parler au bon personnage ajoute bien sa quete ; vaincre une creature ajoute bien son souvenir ; un doublon est ignore ; une liste pleine ne deborde pas ; quitter le jeu efface proprement la liste.
+- On a aussi verifie les donnees du jeu : chaque quete pointe vers un personnage qui existe vraiment, et chaque recompense est unique (pas de melange entre deux creatures).
+- Cote securite : cette liste n'est envoyee qu'a toi, jamais aux autres joueurs, et reste impossible a falsifier depuis ton ordinateur.
+
+Impact :
+
+- La brique « memoire de joueur » est jugee fiable. Aucun bug bloquant.
+- Un seul petit detail cosmetique a peaufiner : l'ordre alphabetique des souvenirs avec accents (ex. « Eclat ») sera rendu plus naturel a la prochaine passe.
+
+Statut :
+
+- Test automatique : 33/33 OK.
+- Verification technique complete sous Windows : a faire cote Shan (limite de l'environnement de test).
+- Detail : [[iterations/2026-06-29-test-game-logic-progression]].
+
+## 2026-06-29 15:23 - Le jeu se souvient enfin de ce que tu fais
+
+En clair :
+
+- Avant, quand tu parlais a un personnage ou que tu battais un ennemi, le jeu te montrait un message... puis oubliait tout aussitot. Rien n'etait garde.
+- Maintenant, le serveur (l'ordinateur central du jeu, celui en qui on peut avoir confiance) tient une petite liste pour chaque joueur : les quetes decouvertes et les souvenirs gagnes.
+- Parler au bon personnage ajoute sa quete a ta liste. Vaincre une creature ajoute son souvenir. Pas de doublon : un souvenir deja recu n'est pas recompte.
+- C'est le serveur qui decide tout, pas ton ordinateur : impossible de tricher en s'inventant des recompenses.
+
+Impact :
+
+- Premiere vraie « memoire de joueur » : la base pour un futur inventaire et un journal de quetes.
+- Ce que tu accomplis commence a compter et a rester.
+
+Statut :
+
+- Logique verifiee en test automatique (13 controles OK) : dedoublonnage, tri, refus des valeurs vides.
+- Pour l'instant l'affichage a l'ecran de cette liste reste a brancher (prochaine etape) ; la sauvegarde longue duree viendra plus tard.
+- A finaliser cote Shan : verification technique sous Windows.
+- Detail : [[iterations/2026-06-29-progression-serveur-authoritative]].
+
 ## 2026-06-28 07:40 - Les routes epousent enfin le relief
 
 En clair :
@@ -1611,3 +1652,64 @@ Statut :
 
 - Typecheck et lint client OK.
 - Detail : [[iterations/2026-06-28-biomes-propres-v1]].
+
+## 2026-06-30 08:02 +04:00 - Catalogue equipment verrouille et zones V1 completees
+
+En clair :
+
+- Le controle automatique des objets teste maintenant aussi les erreurs attendues.
+- Un consommable avec un emplacement d'equipement est refuse.
+- Un instrument sans emplacement est refuse.
+- Une cle avec un emplacement d'equipement est refusee.
+- Le catalogue des zones contient maintenant aussi Saint-Denis, Mafate, Salazie et Cilaos.
+
+Impact :
+
+- L'inventaire part sur une base plus fiable.
+- Les futures quetes peuvent cibler les 7 zones gameplay prevues.
+- Aucune nouvelle interface ou connexion reseau n'a ete ajoutee.
+
+Statut :
+
+- Validation content OK.
+- Detail : [[iterations/2026-06-30-zones-catalogue-garde-fou-equipment]].
+
+## 2026-06-30 08:20 +04:00 - Consignes agents (AGENTS.md) completees pour le pipeline terrain
+
+En clair :
+
+- Le projet a maintenant des fiches de consignes (AGENTS.md) pour chaque partie du jeu, lues par les assistants Claude et Codex.
+- Codex avait deja prepare la racine et 7 fiches le matin meme.
+- Il manquait la fiche du dossier "tools" (la fabrique du relief de l'ile). Elle est ajoutee.
+- Claude et Codex se partagent le travail sans se gener : chacun sa branche, chacun sa fiche, on ne touche pas le meme fichier en meme temps.
+
+Impact :
+
+- Moins de risque que les deux assistants se marchent dessus.
+- Les regles du terrain (priorite #1 du projet) sont ecrites noir sur blanc.
+- Rien n'a ete commit : ce sont des fichiers de consignes, en attente de ta validation.
+
+Statut :
+
+- Documentation seulement, aucune ligne de code de jeu modifiee.
+- Detail : [[iterations/2026-06-30-claude-tools-agents-audit]].
+
+## 2026-06-30 08:10 +04:00 - Deux espaces de travail propres pour avancer en parallele
+
+En clair :
+
+- Le projet a maintenant deux dossiers de travail separes : un pour les essais sandbox, un pour les iterations continues.
+- Chaque agent doit lire des consignes adaptees a son secteur avant de modifier le jeu.
+- Les consignes sont separees pour le client 3D, le serveur, les donnees, les assets, le HUD et Obsidian.
+
+Impact :
+
+- Codex et Claude peuvent avancer en parallele sans se marcher dessus.
+- Les essais restent hors de la branche principale tant qu'ils ne sont pas valides.
+- Le projet garde une meilleure separation entre production, experimentation et petites passes regulieres.
+
+Statut :
+
+- Worktrees sandbox et iterations crees.
+- Fichiers `AGENTS.md` sectoriels ajoutes.
+- Detail : [[iterations/2026-06-30-codex-worktrees-agents]].

@@ -105,3 +105,32 @@ Livrable attendu :
 - Les deux travaillent par petites passes.
 - Une passe = une reference principale + une zone principale.
 - La prochaine zone active reste Saint-Paul / Saint-Gilles tant que l'interaction PNJ depend des PNJ Ouest.
+
+## MAJ 2026-06-30 - Worktrees permanents
+
+Objectif : eviter que Claude et Codex se genent pendant les passes paralleles.
+
+Worktrees :
+
+```txt
+C:\Users\Shan li\Documents\Reunion Island Wisdom
+branch: main
+role: integration locale / prod candidate
+note: peut etre dirty, ne pas supposer clean
+
+C:\Users\Shan li\Documents\RIW-worktrees\sandbox
+branch: codex&claude/sandbox-versions
+role: upgrades, tests visuels, experimentations isolables
+note: upstream remote signale gone au 2026-06-30, verifier avant push
+
+C:\Users\Shan li\Documents\RIW-worktrees\iterations
+branch: codex&claude/iterations-permanent
+role: petites passes continues gameplay, content, docs
+```
+
+Regle de jalonnage :
+
+- une passe = une note `docs/obsidian/iterations/YYYY-MM-DD-agent-sujet.md` ;
+- ne pas modifier la meme note a deux ;
+- lire le `AGENTS.md` racine puis le `AGENTS.md` sectoriel avant patch ;
+- merge vers `main` seulement apres validation typecheck/lint/build adaptee au diff.

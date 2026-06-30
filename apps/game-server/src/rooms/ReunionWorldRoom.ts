@@ -1,5 +1,5 @@
 import { Client, Room } from "colyseus";
-import { combatTargets, npcs, zones } from "@riw/content";
+import { combatTargets, npcs, quests, zones } from "@riw/content";
 import {
   attackIntentSchema,
   chatMessageSchema,
@@ -16,6 +16,11 @@ import {
   type ServerSnapshot
 } from "@riw/shared";
 import { CombatSystem } from "../combat/CombatSystem.js";
+import { ProgressionStore } from "../progression/ProgressionStore.js";
+
+// Index PNJ donneur -> quetes a decouvrir (derive du content une seule fois).
+// Parler a un PNJ donneur revele sa/ses quete(s) dans la progression joueur.
+const questsByGiverNpc = buildQuestsByGiverNpc();
 
 type ClientAuth = {
   name?: string;
@@ -39,6 +44,7 @@ export class ReunionWorldRoom extends Room {
   private readonly lastInteractionAt = new Map<string, number>();
   private readonly chat: ChatEntryDto[] = [];
   private readonly combat = new CombatSystem(combatTargets);
+  private readonly progression = new ProgressionStore();
   private readonly respawnAt = new Map<string, number>();
   // Event derive de la zone de depart reelle (coherence : evite "eveil-fournaise" en depart Ouest).
   private activeEvent = `eveil-${startZone.id}`;
@@ -110,6 +116,17 @@ export class ReunionWorldRoom extends Room {
         npcName: npc.name,
         line: npc.line
       });
+
+      // Progression serveur-authoritative : parler a un PNJ donneur revele sa/ses quete(s).
+      let progressed = false;
+      for (const questId of questsByGiverNpc.get(npc.id) ?? []) {
+        if (this.progression.discoverQuest(client.sessionId, questId)) {
+          progressed = true;
+        }
+      }
+      if (progressed) {
+        this.sendProgression(client);
+      }
     });
 
     this.onMessage("attack", (client, message: unknown) => {
@@ -135,6 +152,10 @@ export class ReunionWorldRoom extends Room {
               targetName: def.name,
               reward: def.reward
             });
+            // Le souvenir est desormais stocke dans la progression joueur (dedup serveur).
+            if (this.progression.addSouvenir(client.sessionId, def.reward)) {
+              this.sendProgression(client);
+            }
           }
         }
         this.broadcastSnapshot();
@@ -157,7 +178,9 @@ export class ReunionWorldRoom extends Room {
     };
 
     this.players.set(client.sessionId, player);
+    this.progression.ensure(client.sessionId);
     client.send("snapshot", this.createSnapshot());
+    this.sendProgression(client);
     this.broadcastSnapshot();
   }
 
@@ -168,7 +191,13 @@ export class ReunionWorldRoom extends Room {
     this.lastInteractionAt.delete(client.sessionId);
     this.respawnAt.delete(client.sessionId);
     this.combat.forgetPlayer(client.sessionId);
+    this.progression.forget(client.sessionId);
     this.broadcastSnapshot();
+  }
+
+  private sendProgression(client: Client): void {
+    // Envoye uniquement au joueur concerne (progression = etat prive, pas de broadcast).
+    client.send("progression", this.progression.snapshot(client.sessionId));
   }
 
   private update(deltaTimeMs: number): void {
@@ -269,6 +298,19 @@ export class ReunionWorldRoom extends Room {
       activeEvent: this.activeEvent
     };
   }
+}
+
+function buildQuestsByGiverNpc(): Map<string, string[]> {
+  const index = new Map<string, string[]>();
+  for (const quest of quests) {
+    const list = index.get(quest.giverNpcId);
+    if (list) {
+      list.push(quest.id);
+    } else {
+      index.set(quest.giverNpcId, [quest.id]);
+    }
+  }
+  return index;
 }
 
 function clamp(value: number, min: number, max: number): number {
